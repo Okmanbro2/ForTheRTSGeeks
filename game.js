@@ -50,12 +50,13 @@ function startGame(playerName) {
         right: Phaser.Input.Keyboard.KeyCodes.D
       });
 
+      // Connect to server ONLY after scene is ready
       this.socket = io(SERVER_URL);
       dbg("Socket created");
 
       this.socket.on("connect", () => {
+        this.socket.emit("setName", playerName);
         dbg("Connected! ID: " + this.socket.id);
-        this.socket.emit("join", { name: playerName });
       });
 
       this.socket.on("currentPlayers", (players) => {
