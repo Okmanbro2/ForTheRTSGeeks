@@ -44,21 +44,29 @@
   </style>
 </head>
 <body>
-
-  <!-- name -->
   <div id="nameScreen">
-    <h1>You gotta do this</h1>
+    <h1>Input something yo</h1>
     <p>Enter your name to join</p>
     <input id="nameInput" type="text" maxlength="16" placeholder="Your name..." />
     <button id="joinBtn">Join Game</button>
   </div>
 
-  <!-- game rendering -->
   <div id="gameContainer"></div>
+
+  <div id="debugLog" style="
+    position: fixed; top: 0; left: 0;
+    background: rgba(0,0,0,0.8);
+    color: #00ff00;
+    font-size: 12px;
+    font-family: monospace;
+    padding: 8px;
+    z-index: 9999;
+    max-width: 400px;
+    pointer-events: none;
+  "></div>
 
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script src="game.js"></script>
-
 </body>
 </html>
