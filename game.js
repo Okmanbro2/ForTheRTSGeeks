@@ -3,7 +3,7 @@ const nameInput = document.getElementById("nameInput");
 const nameScreen = document.getElementById("nameScreen");
 const gameContainer = document.getElementById("gameContainer");
 
-const SERVER_URL = "https://forthertsgeeks-production.up.railway.app/";
+const SERVER_URL = "https://forthertsgeeks-production.up.railway.app";
 
 joinBtn.addEventListener("click", () => {
   const name = nameInput.value.trim();
@@ -28,20 +28,16 @@ function startGame(playerName) {
       this.myPlayer = null;
       this.myLabel = null;
 
-      // simple background for now
       this.add.rectangle(0, 0, 2000, 2000, 0x3a7d44).setOrigin(0, 0);
 
-      // honestly i just did this for whatever
       const grid = this.add.graphics();
       grid.lineStyle(1, 0x2d6b38, 0.4);
       for (let x = 0; x < 2000; x += 64) grid.moveTo(x, 0).lineTo(x, 2000);
       for (let y = 0; y < 2000; y += 64) grid.moveTo(0, y).lineTo(2000, y);
       grid.strokePath();
 
-      // cam
       this.cameras.main.setBounds(0, 0, 2000, 2000);
 
-      // controls
       this.cursors = this.input.keyboard.createCursorKeys();
       this.wasd = this.input.keyboard.addKeys({
         up: Phaser.Input.Keyboard.KeyCodes.W,
@@ -49,8 +45,6 @@ function startGame(playerName) {
         left: Phaser.Input.Keyboard.KeyCodes.A,
         right: Phaser.Input.Keyboard.KeyCodes.D
       });
-
-      // socket things
 
       socket.on("connect", () => {
         socket.emit("setName", playerName);
@@ -80,6 +74,7 @@ function startGame(playerName) {
           delete this.otherPlayers[id];
         }
       });
+    }
 
     spawnMe(p) {
       this.myPlayer = this.add.rectangle(p.x, p.y, 32, 32, 0x4fc3f7);
@@ -103,8 +98,8 @@ function startGame(playerName) {
       if (!this.myPlayer) return;
 
       const speed = 3;
-      let moved = false;
       let dx = 0, dy = 0;
+      let moved = false;
 
       if (this.cursors.left.isDown  || this.wasd.left.isDown)  { dx = -speed; moved = true; }
       if (this.cursors.right.isDown || this.wasd.right.isDown) { dx =  speed; moved = true; }
