@@ -1,1 +1,64 @@
-<b>Game soon</b>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ForTheRTSGeeks</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a1a2e; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: Arial, sans-serif; }
+
+    #nameScreen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      color: white;
+    }
+
+    #nameScreen h1 { font-size: 2rem; color: #e94560; }
+    #nameScreen p  { color: #aaa; }
+
+    #nameInput {
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: 2px solid #e94560;
+      border-radius: 8px;
+      background: #16213e;
+      color: white;
+      outline: none;
+      text-align: center;
+    }
+
+    #joinBtn {
+      padding: 10px 30px;
+      font-size: 1rem;
+      background: #e94560;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    #joinBtn:hover { background: #c73652; }
+    #gameContainer { display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- name -->
+  <div id="nameScreen">
+    <h1>You gotta do this</h1>
+    <p>Enter your name to join</p>
+    <input id="nameInput" type="text" maxlength="16" placeholder="Your name..." />
+    <button id="joinBtn">Join Game</button>
+  </div>
+
+  <!-- game rendering -->
+  <div id="gameContainer"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="game.js"></script>
+
+</body>
+</html>
