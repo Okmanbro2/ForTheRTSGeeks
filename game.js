@@ -82,7 +82,11 @@ function startGame(playerName) {
         fontSize: "13px", color: "#ffffff",
         stroke: "#000000", strokeThickness: 3
       }).setOrigin(0.5);
-      this.cameras.main.startFollow(this.myPlayer, true, 0.1, 0.1);
+
+      // register
+      this.time.delayedCall(100, () => {
+        this.cameras.main.startFollow(this.myPlayer, true, 0.1, 0.1);
+      });
     }
 
     spawnOther(p) {
