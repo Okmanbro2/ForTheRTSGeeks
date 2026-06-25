@@ -18,7 +18,6 @@ nameInput.addEventListener("keydown", (e) => {
 });
 
 function startGame(playerName) {
-  const socket = io(SERVER_URL);
 
   class GameScene extends Phaser.Scene {
     constructor() { super("GameScene"); }
@@ -46,20 +45,23 @@ function startGame(playerName) {
         right: Phaser.Input.Keyboard.KeyCodes.D
       });
 
-      socket.on("connect", () => {
-        socket.emit("setName", playerName);
+      // Connect to server ONLY after scene is ready
+      this.socket = io(SERVER_URL);
+
+      this.socket.on("connect", () => {
+        this.socket.emit("setName", playerName);
       });
 
-      socket.on("currentPlayers", (players) => {
+      this.socket.on("currentPlayers", (players) => {
         Object.values(players).forEach((p) => {
-          if (p.id === socket.id) this.spawnMe(p);
+          if (p.id === this.socket.id) this.spawnMe(p);
           else this.spawnOther(p);
         });
       });
 
-      socket.on("newPlayer", (p) => this.spawnOther(p));
+      this.socket.on("newPlayer", (p) => this.spawnOther(p));
 
-      socket.on("playerMoved", (data) => {
+      this.socket.on("playerMoved", (data) => {
         const other = this.otherPlayers[data.id];
         if (other) {
           other.body.setPosition(data.x, data.y);
@@ -67,7 +69,7 @@ function startGame(playerName) {
         }
       });
 
-      socket.on("playerLeft", (id) => {
+      this.socket.on("playerLeft", (id) => {
         if (this.otherPlayers[id]) {
           this.otherPlayers[id].label.destroy();
           this.otherPlayers[id].body.destroy();
@@ -82,11 +84,7 @@ function startGame(playerName) {
         fontSize: "13px", color: "#ffffff",
         stroke: "#000000", strokeThickness: 3
       }).setOrigin(0.5);
-
-      // register
-      this.time.delayedCall(100, () => {
-        this.cameras.main.startFollow(this.myPlayer, true, 0.1, 0.1);
-      });
+      this.cameras.main.startFollow(this.myPlayer, true, 0.1, 0.1);
     }
 
     spawnOther(p) {
@@ -114,7 +112,7 @@ function startGame(playerName) {
         this.myPlayer.x += dx;
         this.myPlayer.y += dy;
         this.myLabel.setPosition(this.myPlayer.x, this.myPlayer.y - 28);
-        socket.emit("move", { x: this.myPlayer.x, y: this.myPlayer.y });
+        this.socket.emit("move", { x: this.myPlayer.x, y: this.myPlayer.y });
       }
     }
   }
