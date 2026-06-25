@@ -3,7 +3,7 @@ const { Server } = require("socket.io");
 
 const PORT = process.env.PORT || 3000;
 
-// Railway needs an HTTP server to sit under Socket.io
+// https
 const httpServer = http.createServer((req, res) => {
   res.writeHead(200);
   res.end("Game server is running!");
@@ -25,13 +25,12 @@ io.on("connection", (socket) => {
     name: "Player"
   };
 
-  socket.emit("currentPlayers", players);
-  socket.broadcast.emit("newPlayer", players[socket.id]);
-
-  socket.on("setName", (name) => {
+  socket.on("join", (data) => {
     if (players[socket.id]) {
-      players[socket.id].name = name;
+      players[socket.id].name = data.name;
     }
+    socket.emit("currentPlayers", players);
+    socket.broadcast.emit("newPlayer", players[socket.id]);
   });
 
   socket.on("move", (data) => {
