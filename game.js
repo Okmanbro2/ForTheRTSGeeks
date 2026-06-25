@@ -1,3 +1,8 @@
+function dbg(msg) {
+  const log = document.getElementById("debugLog");
+  if (log) log.innerHTML += msg + "<br>";
+}
+
 const joinBtn = document.getElementById("joinBtn");
 const nameInput = document.getElementById("nameInput");
 const nameScreen = document.getElementById("nameScreen");
