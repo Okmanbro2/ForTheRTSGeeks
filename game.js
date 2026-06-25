@@ -52,12 +52,15 @@ function startGame(playerName) {
 
       // Connect to server ONLY after scene is ready
       this.socket = io(SERVER_URL);
+      dbg("Socket created");
 
       this.socket.on("connect", () => {
         this.socket.emit("setName", playerName);
+        dbg("Connected! ID: " + this.socket.id);
       });
 
       this.socket.on("currentPlayers", (players) => {
+        dbg("Got currentPlayers: " + Object.keys(players).length + " players");
         Object.values(players).forEach((p) => {
           if (p.id === this.socket.id) this.spawnMe(p);
           else this.spawnOther(p);
@@ -84,6 +87,7 @@ function startGame(playerName) {
     }
 
     spawnMe(p) {
+      dbg("spawnMe called at " + p.x + "," + p.y);
       this.myPlayer = this.add.rectangle(p.x, p.y, 32, 32, 0x4fc3f7);
       this.myLabel = this.add.text(p.x, p.y - 28, playerName, {
         fontSize: "13px", color: "#ffffff",
