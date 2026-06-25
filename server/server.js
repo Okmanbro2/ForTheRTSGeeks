@@ -9,7 +9,12 @@ const players = {};
 io.on("connection", (socket) => {
   console.log("Player connected:", socket.id);
 
-  players[socket.id] = { x: 400, y: 300, id: socket.id, name: "Player" };
+  players[socket.id] = {
+  x: 200 + Math.floor(Math.random() * 600),
+  y: 200 + Math.floor(Math.random() * 600),
+  id: socket.id,
+  name: "Player"
+};
 
   socket.emit("currentPlayers", players);
   socket.broadcast.emit("newPlayer", players[socket.id]);
