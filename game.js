@@ -54,9 +54,11 @@ function startGame(playerName) {
       this.socket = io(SERVER_URL);
       dbg("Socket created");
 
-      this.socket.on("connect", () => {
-        this.socket.emit("join", { name: playerName });
+     this.socket.on("connect", () => {
         dbg("Connected! ID: " + this.socket.id);
+        setTimeout(() => {
+          this.socket.emit("join", { name: playerName });
+        }, 150);
       });
 
       this.socket.on("currentPlayers", (players) => {
