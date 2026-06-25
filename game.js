@@ -52,6 +52,10 @@ function startGame(playerName) {
 
       // socket things
 
+      socket.on("connect", () => {
+        socket.emit("setName", playerName);
+      });
+
       socket.on("currentPlayers", (players) => {
         Object.values(players).forEach((p) => {
           if (p.id === socket.id) this.spawnMe(p);
@@ -76,7 +80,6 @@ function startGame(playerName) {
           delete this.otherPlayers[id];
         }
       });
-    }
 
     spawnMe(p) {
       this.myPlayer = this.add.rectangle(p.x, p.y, 32, 32, 0x4fc3f7);
