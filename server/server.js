@@ -9,16 +9,17 @@ const players = {};
 io.on("connection", (socket) => {
   console.log("Player connected:", socket.id);
 
-  // stupid join handler
-  players[socket.id] = { x: 400, y: 300, id: socket.id };
+  players[socket.id] = { x: 400, y: 300, id: socket.id, name: "Player" };
 
-  // state sending shit
   socket.emit("currentPlayers", players);
-
-  // spread Miss Information
   socket.broadcast.emit("newPlayer", players[socket.id]);
 
-  // movement
+  socket.on("setName", (name) => {
+    if (players[socket.id]) {
+      players[socket.id].name = name;
+    }
+  });
+
   socket.on("move", (data) => {
     if (players[socket.id]) {
       players[socket.id].x = data.x;
@@ -27,9 +28,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Goodbye Bro
   socket.on("disconnect", () => {
-    console.log("Player disconnected:", socket.id);
     delete players[socket.id];
     io.emit("playerLeft", socket.id);
   });
