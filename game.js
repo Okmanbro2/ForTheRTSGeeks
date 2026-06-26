@@ -167,22 +167,29 @@ function startGame(playerName) {
       this.otherPlayers[p.id] = { body, label };
     }
 
-    showChatBubble(id, message) {
+   showChatBubble(id, message) {
       const isMe = this.socket && id === this.socket.id;
       const target = isMe ? this.myPlayer : (this.otherPlayers[id] ? this.otherPlayers[id].body : null);
       if (!target) return;
 
+      if (!target.chatBubbles) target.chatBubbles = [];
+
       const bubble = this.add.text(target.x, target.y - 50, message, {
-        fontSize: "12px", color: "#ffffff",
-        backgroundColor: "#000000cc",
-        padding: { x: 6, y: 4 }
-      }).setOrigin(0.5);
+        fontSize: "13px",
+        color: "#ffffff",
+        backgroundColor: "#00000099",
+        padding: { x: 8, y: 5 },
+        borderRadius: 8,
+        shadow: { offsetX: 1, offsetY: 1, color: "#000", blur: 4, fill: true }
+      }).setOrigin(0.5).setDepth(10);
 
-      target.chatBubble = bubble;
+      target.chatBubbles.push(bubble);
 
-      this.time.delayedCall(3000, () => {
+      this.time.delayedCall(3500, () => {
         bubble.destroy();
-        target.chatBubble = null;
+        if (target.chatBubbles) {
+          target.chatBubbles = target.chatBubbles.filter(b => b !== bubble);
+        }
       });
     }
 
@@ -226,12 +233,17 @@ function startGame(playerName) {
         this.socket.emit("move", { x: this.myPlayer.x, y: this.myPlayer.y });
       }
 
-      if (this.myPlayer && this.myPlayer.chatBubble) {
-        this.myPlayer.chatBubble.setPosition(this.myPlayer.x, this.myPlayer.y - 50);
+      if (this.myPlayer && this.myPlayer.chatBubbles) {
+        this.myPlayer.chatBubbles.forEach((bubble, i) => {
+          bubble.setPosition(this.myPlayer.x, this.myPlayer.y - 55 - (i * 26));
+        });
       }
+
       Object.values(this.otherPlayers).forEach((p) => {
-        if (p.body.chatBubble) {
-          p.body.chatBubble.setPosition(p.body.x, p.body.y - 50);
+        if (p.body.chatBubbles) {
+          p.body.chatBubbles.forEach((bubble, i) => {
+            bubble.setPosition(p.body.x, p.body.y - 55 - (i * 26));
+          });
         }
       });
     }
