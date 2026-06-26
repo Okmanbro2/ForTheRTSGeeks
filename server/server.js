@@ -223,7 +223,7 @@ setInterval(() => {
     });
   });
 
-  // Broadcast enemy positions + team so clients render the right color
+  // broadcast enemy positions and team so clients render the right color
   if (enemyList.length > 0) {
     io.emit("enemiesMoved", enemyList.map(e => ({
       id: e.id, x: e.x, y: e.y, team: e.team
@@ -247,7 +247,6 @@ io.on("connection", (socket) => {
 
   socket.emit("currentPlayers", players);
   Object.values(enemies).forEach((e) => socket.emit("enemySpawned", e));
-  socket.emit("currentPlayers", players);
   socket.emit("gameTick", { // send current time immediately on join
     minutes: Math.floor(gameClock / 60),
     seconds: gameClock % 60
