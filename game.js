@@ -77,11 +77,12 @@ function startGame(playerName) {
         if (other) other.label.setText(data.name);
       });
 
-      this.socket.on("playerMoved", (data) => {
+     this.socket.on("playerMoved", (data) => {
         const other = this.otherPlayers[data.id];
         if (other) {
           other.body.setPosition(data.x, data.y);
           other.label.setPosition(data.x, data.y - 28);
+          if (data.name) other.label.setText(data.name);
         }
       });
 
