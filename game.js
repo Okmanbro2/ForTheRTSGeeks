@@ -70,7 +70,9 @@ function startGame(playerName) {
       this.socket.on("newPlayer", (p) => this.spawnOther(p));
 
       this.socket.on("playerNamed", (data) => {
+        dbg("playerNamed: " + data.id + " = " + data.name);
         const other = this.otherPlayers[data.id];
+        dbg("other exists: " + !!other);
         if (other) other.label.setText(data.name);
       });
 
