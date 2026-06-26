@@ -24,6 +24,7 @@ io.on("connection", (socket) => {
   socket.on("setName", (name) => {
     if (players[socket.id]) {
       players[socket.id].name = name;
+      socket.broadcast.emit("playerNamed", { id: socket.id, name: name });
     }
   });
   socket.on("move", (data) => {
