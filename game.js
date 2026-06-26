@@ -49,6 +49,7 @@ function startGame(playerName) {
         left: Phaser.Input.Keyboard.KeyCodes.A,
         right: Phaser.Input.Keyboard.KeyCodes.D
       });
+      this.input.keyboard.disableGlobalCapture();
 
       // only after scene ready yo
       this.socket = io(SERVER_URL);
@@ -117,12 +118,13 @@ function startGame(playerName) {
       `;
       document.body.appendChild(this.chatLog);
 
-      this.input.keyboard.on("keydown-T", () => {
+      this.input.keyboard.on("keydown-T", (event) => {
         if (!this.chatOpen) {
           this.chatOpen = true;
           this.chatInput.style.display = "block";
           this.chatInput.value = "";
-          this.chatInput.focus();
+          setTimeout(() => this.chatInput.focus(), 10);
+          event.preventDefault();
         }
       });
 
@@ -173,11 +175,15 @@ function startGame(playerName) {
       const bubble = this.add.text(target.x, target.y - 50, message, {
         fontSize: "12px", color: "#ffffff",
         backgroundColor: "#000000cc",
-        padding: { x: 6, y: 4 },
-        borderRadius: 4
+        padding: { x: 6, y: 4 }
       }).setOrigin(0.5);
 
-      this.time.delayedCall(3000, () => bubble.destroy());
+      target.chatBubble = bubble;
+
+      this.time.delayedCall(3000, () => {
+        bubble.destroy();
+        target.chatBubble = null;
+      });
     }
 
     addChatLog(name, message) {
@@ -211,7 +217,7 @@ function startGame(playerName) {
       if (this.cursors.up.isDown    || this.wasd.up.isDown)    { dy = -speed; moved = true; }
       if (this.cursors.down.isDown  || this.wasd.down.isDown)  { dy =  speed; moved = true; }
 
-     if (moved) {
+      if (moved) {
         const newX = Phaser.Math.Clamp(this.myPlayer.x + dx, 16, 2000 - 16);
         const newY = Phaser.Math.Clamp(this.myPlayer.y + dy, 16, 2000 - 16);
         this.myPlayer.x = newX;
@@ -219,6 +225,15 @@ function startGame(playerName) {
         this.myLabel.setPosition(this.myPlayer.x, this.myPlayer.y - 28);
         this.socket.emit("move", { x: this.myPlayer.x, y: this.myPlayer.y });
       }
+
+      if (this.myPlayer && this.myPlayer.chatBubble) {
+        this.myPlayer.chatBubble.setPosition(this.myPlayer.x, this.myPlayer.y - 50);
+      }
+      Object.values(this.otherPlayers).forEach((p) => {
+        if (p.body.chatBubble) {
+          p.body.chatBubble.setPosition(p.body.x, p.body.y - 50);
+        }
+      });
     }
   }
 
