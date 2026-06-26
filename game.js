@@ -213,7 +213,6 @@ function startGame(playerName) {
         const idx = slots.indexOf(e.key);
         if (idx !== -1 && !this.chatOpen) this.selectSlot(idx);
       });
-      }
     }
 
      spawnMe(p) {
