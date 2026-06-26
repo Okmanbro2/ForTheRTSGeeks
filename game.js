@@ -41,6 +41,13 @@ function startGame(playerName, playerTeam) {
       this.cameras.main.setBounds(0, 0, 2000, 2000);
       this.cameras.main.setBackgroundColor(0x3a7d44);
 
+      this.mouseScreenX = 0;
+      this.mouseScreenY = 0;
+      document.addEventListener("mousemove", (e) => {
+        this.mouseScreenX = e.clientX;
+        this.mouseScreenY = e.clientY;
+      });
+
       this.cursors = this.input.keyboard.createCursorKeys();
       this.wasd = this.input.keyboard.addKeys({
         up:    Phaser.Input.Keyboard.KeyCodes.W,
@@ -630,8 +637,8 @@ function startGame(playerName, playerTeam) {
         this.tooltipFill.style.background = pct > 0.6 ? "#4caf50" : pct > 0.3 ? "#f0c040" : "#e05050";
         this.tooltipLabel.textContent = `${hoveredEnemy.hp}/${hoveredEnemy.maxHp}`;
         this.npcHpTooltip.style.display = "block";
-        this.npcHpTooltip.style.left    = (pointer.x - 40) + "px";
-        this.npcHpTooltip.style.top     = (pointer.y - 32) + "px";
+        this.npcHpTooltip.style.left = (this.mouseScreenX - 40) + "px";
+        this.npcHpTooltip.style.top  = (this.mouseScreenY - 32) + "px";
       } else {
         this.npcHpTooltip.style.display = "none";
       }
