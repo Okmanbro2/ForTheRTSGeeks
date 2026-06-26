@@ -377,6 +377,25 @@ function startGame(playerName, playerTeam) {
       this.scoreboardDiv.appendChild(worSide);
       document.body.appendChild(this.scoreboardDiv);
 
+      // minimap
+      this.minimapDiv = document.createElement("div");
+      this.minimapDiv.style.cssText = `
+        position: fixed; bottom: 90px; right: 10px;
+        width: 160px; height: 160px;
+        background: rgba(20,20,20,0.75);
+        border-radius: 6px;
+        border: 1px solid rgba(255,255,255,0.15);
+        z-index: 999; pointer-events: none;
+        overflow: hidden;
+      `;
+      this.minimapCanvas = document.createElement("canvas");
+      this.minimapCanvas.width  = 160;
+      this.minimapCanvas.height = 160;
+      this.minimapCanvas.style.cssText = "position:absolute; top:0; left:0;";
+      this.minimapDiv.appendChild(this.minimapCanvas);
+      document.body.appendChild(this.minimapDiv);
+      this.minimapCtx = this.minimapCanvas.getContext("2d");
+
       document.addEventListener("keydown", (e) => {
         const idx = ["1","2","3","4","5"].indexOf(e.key);
         if (idx !== -1 && !this.chatOpen) {
@@ -417,8 +436,62 @@ function startGame(playerName, playerTeam) {
       this.otherPlayers[p.id] = { body, label, team: p.team || null };
     }
 
-    // chat (again)
+    drawMinimap() {
+      const ctx  = this.minimapCtx;
+      const SIZE = 160;
+      const WORLD = 2000;
+      const scale = SIZE / WORLD;
+    
+      ctx.clearRect(0, 0, SIZE, SIZE);
+    
+      // lines carryover
+      ctx.strokeStyle = "rgba(255,255,255,0.05)";
+      ctx.lineWidth = 0.5;
+      for (let i = 0; i < SIZE; i += SIZE / 4) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, SIZE); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(SIZE, i); ctx.stroke();
+      }
+    
+      // npcs
+      Object.values(this.enemies).forEach((e) => {
+        ctx.fillStyle = teamCss(e.team);
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath();
+        ctx.arc(e.body.x * scale, e.body.y * scale, 2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    
+      // other players
+      Object.values(this.otherPlayers).forEach((p) => {
+        ctx.fillStyle = teamCss(p.team);
+        ctx.globalAlpha = 0.9;
+        ctx.beginPath();
+        ctx.arc(p.body.x * scale, p.body.y * scale, 3, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    
+      // u (more vis)
+      if (this.myPlayer) {
+        const mx = this.myPlayer.x * scale;
+        const my = this.myPlayer.y * scale;
+    
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(mx, my, 4, 0, Math.PI * 2);
+        ctx.stroke();
+    
+        ctx.fillStyle = teamCss(this.myTeam);
+        ctx.beginPath();
+        ctx.arc(mx, my, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    
+      ctx.globalAlpha = 1;
+    }
 
+    // bubblechat
     showChatBubble(id, message) {
       const isMe   = this.socket && id === this.socket.id;
       const target = isMe ? this.myPlayer : (this.otherPlayers[id]?.body ?? null);
@@ -495,7 +568,6 @@ function startGame(playerName, playerTeam) {
     }
 
     // update loop
-
     update() {
       if (!this.myPlayer) return;
 
@@ -536,6 +608,9 @@ function startGame(playerName, playerTeam) {
         this.updatePlayerList();
         this.lastListUpdate = this.time.now;
       }
+
+      // buuurp
+      this.drawMinimap();
 
       // tooltip activation stuff
       // chuddy
