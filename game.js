@@ -126,6 +126,28 @@ function startGame(playerName, playerTeam) {
         }
       });
 
+      // health bar
+      this.hpBarDiv = document.createElement("div");
+      this.hpBarDiv.style.cssText = `
+        position: fixed; bottom: 82px; left: 50%;
+        transform: translateX(-50%);
+        width: 160px; height: 14px;
+        background: rgba(0,0,0,0.4);
+        border-radius: 4px; overflow: hidden;
+        z-index: 999;
+      `;
+      const hpFill = document.createElement("div");
+      hpFill.style.cssText = `
+        height: 100%; width: 100%;
+        background: #4caf50;
+        transition: width 0.15s, background 0.15s;
+      `;
+      this.hpBarDiv.appendChild(hpFill);
+      this.hpFill = hpFill;
+      document.body.appendChild(this.hpBarDiv);
+      this.myHp = 100;
+      this.myMaxHp = 100;
+
       // chat
       this.chatInput = document.createElement("input");
       this.chatInput.type = "text";
@@ -181,19 +203,28 @@ function startGame(playerName, playerTeam) {
         this.addChatLog(data.name, data.team, data.message);
       });
 
+      this.socket.on("hpUpdate", (data) => {
+        this.setMyHp(data.hp, data.maxHp);
+      });
+
+      this.socket.on("enemyHpUpdate", (data) => {
+        if (this.enemies[data.id]) {
+          this.enemies[data.id].hp    = data.hp;
+          this.enemies[data.id].maxHp = data.maxHp;
+        } 
+      });
+
       // npcs
       this.enemies = {};
 
       this.socket.on("enemySpawned", (e) => {
         const color = teamHex(e.team);
         const body  = this.add.rectangle(e.x, e.y, 28, 28, color);
-        // Dim the enemy slightly so it reads as NPC not player
-        body.setAlpha(0.75);
         const label = this.add.text(e.x, e.y - 22, "NPC", {
           fontSize: "10px", color: teamCss(e.team),
           stroke: "#000", strokeThickness: 2
         }).setOrigin(0.5);
-        this.enemies[e.id] = { body, label, team: e.team };
+        this.enemies[e.id] = { body, label, team: e.team, hp: e.hp, maxHp: e.maxHp };
       });
 
       this.socket.on("enemiesMoved", (list) => {
@@ -219,6 +250,36 @@ function startGame(playerName, playerTeam) {
         }
       });
 
+      // tooltip for npcs
+      this.npcHpTooltip = document.createElement("div");
+      this.npcHpTooltip.style.cssText = `
+        position: fixed; display: none;
+        width: 80px; z-index: 1000;
+        pointer-events: none;
+      `;
+      
+      const tooltipBar = document.createElement("div");
+      tooltipBar.style.cssText = `
+        height: 8px; background: rgba(0,0,0,0.4);
+        border-radius: 3px; overflow: hidden;
+      `;
+      
+      const tooltipFill = document.createElement("div");
+      tooltipFill.style.cssText = `height: 100%; background: #4caf50;`;
+      tooltipBar.appendChild(tooltipFill);
+      const tooltipLabel = document.createElement("div");
+      tooltipLabel.style.cssText = `
+        color: white; font-size: 10px; text-align: center;
+        font-family: Arial, sans-serif; margin-top: 2px;
+        text-shadow: 0 1px 2px #000;
+      `;
+      
+      this.npcHpTooltip.appendChild(tooltipBar);
+      this.npcHpTooltip.appendChild(tooltipLabel);
+      document.body.appendChild(this.npcHpTooltip);
+      this.tooltipFill  = tooltipFill;
+      this.tooltipLabel = tooltipLabel;
+      
       // leaderboard
       this.playerListDiv = document.createElement("div");
       this.playerListDiv.style.cssText = `
@@ -262,6 +323,8 @@ function startGame(playerName, playerTeam) {
         this.inventorySlots.push(slot);
       }
 
+      
+
       document.addEventListener("keydown", (e) => {
         const idx = ["1","2","3","4","5"].indexOf(e.key);
         if (idx !== -1 && !this.chatOpen) {
@@ -270,8 +333,16 @@ function startGame(playerName, playerTeam) {
       });
     }
 
+    // hp helper
+    setMyHp(hp, maxHp) {
+      this.myHp    = hp;
+      this.myMaxHp = maxHp;
+      const pct    = Math.max(0, hp / maxHp);
+      this.hpFill.style.width = (pct * 100) + "%";
+      this.hpFill.style.background = "#4caf50";
+    }
+    
     // spawning
-
     spawnMe(p) {
       dbg("spawnMe at " + p.x + "," + p.y + " team=" + playerTeam);
       this.myPlayer = this.add.rectangle(p.x, p.y, 32, 32, teamHex(playerTeam));
@@ -412,6 +483,30 @@ function startGame(playerName, playerTeam) {
       if (this.time.now - this.lastListUpdate > 2000) {
         this.updatePlayerList();
         this.lastListUpdate = this.time.now;
+      }
+
+      // tooltip activation stuff
+      // chuddy
+      const pointer = this.input.activePointer;
+      const world   = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+      let   hoveredEnemy = null;
+      
+      Object.values(this.enemies).forEach((e) => {
+        const dx = world.x - e.body.x;
+        const dy = world.y - e.body.y;
+        if (Math.sqrt(dx*dx + dy*dy) < 20) hoveredEnemy = e;
+      });
+      
+      if (hoveredEnemy && hoveredEnemy.hp != null) {
+        const pct = Math.max(0, hoveredEnemy.hp / hoveredEnemy.maxHp);
+        this.tooltipFill.style.width  = (pct * 100) + "%";
+        this.tooltipFill.style.background = pct > 0.6 ? "#4caf50" : pct > 0.3 ? "#f0c040" : "#e05050";
+        this.tooltipLabel.textContent = `${hoveredEnemy.hp}/${hoveredEnemy.maxHp}`;
+        this.npcHpTooltip.style.display = "block";
+        this.npcHpTooltip.style.left    = (pointer.x - 40) + "px";
+        this.npcHpTooltip.style.top     = (pointer.y - 32) + "px";
+      } else {
+        this.npcHpTooltip.style.display = "none";
       }
     }
   }
