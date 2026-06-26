@@ -50,12 +50,12 @@ function startGame(playerName) {
         right: Phaser.Input.Keyboard.KeyCodes.D
       });
 
-      // connect after scene ready king
+      // Connect to server ONLY after scene is ready
       this.socket = io(SERVER_URL);
       dbg("Socket created");
 
       this.socket.on("connect", () => {
-        this.socket.emit("join", { name: playerName });
+        this.socket.emit("setName", playerName);
         dbg("Connected! ID: " + this.socket.id);
       });
 
@@ -67,16 +67,7 @@ function startGame(playerName) {
         });
       });
 
-      this.socket.on("newPlayer", (p) => {
-        this.spawnOther(p);
-      });
-
-      this.socket.on("playerNamed", (data) => {
-        const other = this.otherPlayers[data.id];
-        if (other) {
-          other.label.setText(data.name);
-        }
-      });
+      this.socket.on("newPlayer", (p) => this.spawnOther(p));
 
       this.socket.on("playerMoved", (data) => {
         const other = this.otherPlayers[data.id];
@@ -112,12 +103,6 @@ function startGame(playerName) {
         stroke: "#000000", strokeThickness: 3
       }).setOrigin(0.5);
       this.otherPlayers[p.id] = { body, label };
-
-      this.time.delayedCall(200, () => {
-        if (this.otherPlayers[p.id] && p.name && p.name !== "Player") {
-          this.otherPlayers[p.id].label.setText(p.name);
-        }
-      });
     }
 
     update() {
