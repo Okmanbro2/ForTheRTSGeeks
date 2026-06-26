@@ -54,25 +54,6 @@ function startGame(playerName) {
       this.socket = io(SERVER_URL);
       dbg("Socket created");
 
-      spawnMe(p) {
-      dbg("spawnMe called at " + p.x + "," + p.y);
-      this.myPlayer = this.add.rectangle(p.x, p.y, 32, 32, 0x4fc3f7);
-      this.myLabel = this.add.text(p.x, p.y - 28, playerName, {
-        fontSize: "13px", color: "#ffffff",
-        stroke: "#000000", strokeThickness: 3
-      }).setOrigin(0.5);
-      this.cameras.main.startFollow(this.myPlayer, true, 0.1, 0.1);
-    }
-
-    spawnOther(p) {
-      const body = this.add.rectangle(p.x, p.y, 32, 32, 0xef5350);
-      const label = this.add.text(p.x, p.y - 28, p.name || "Player", {
-        fontSize: "13px", color: "#ffffff",
-        stroke: "#000000", strokeThickness: 3
-      }).setOrigin(0.5);
-      this.otherPlayers[p.id] = { body, label };
-    }
-
       this.socket.on("connect", () => {
         this.socket.emit("setName", playerName);
         dbg("Connected! ID: " + this.socket.id);
@@ -112,6 +93,25 @@ function startGame(playerName) {
       });
     }
 
+     spawnMe(p) {
+      dbg("spawnMe called at " + p.x + "," + p.y);
+      this.myPlayer = this.add.rectangle(p.x, p.y, 32, 32, 0x4fc3f7);
+      this.myLabel = this.add.text(p.x, p.y - 28, playerName, {
+        fontSize: "13px", color: "#ffffff",
+        stroke: "#000000", strokeThickness: 3
+      }).setOrigin(0.5);
+      this.cameras.main.startFollow(this.myPlayer, true, 0.1, 0.1);
+    }
+
+    spawnOther(p) {
+      const body = this.add.rectangle(p.x, p.y, 32, 32, 0xef5350);
+      const label = this.add.text(p.x, p.y - 28, p.name || "Player", {
+        fontSize: "13px", color: "#ffffff",
+        stroke: "#000000", strokeThickness: 3
+      }).setOrigin(0.5);
+      this.otherPlayers[p.id] = { body, label };
+    }
+
     update() {
       if (!this.myPlayer) return;
 
@@ -124,9 +124,11 @@ function startGame(playerName) {
       if (this.cursors.up.isDown    || this.wasd.up.isDown)    { dy = -speed; moved = true; }
       if (this.cursors.down.isDown  || this.wasd.down.isDown)  { dy =  speed; moved = true; }
 
-      if (moved) {
-        this.myPlayer.x += dx;
-        this.myPlayer.y += dy;
+     if (moved) {
+        const newX = Phaser.Math.Clamp(this.myPlayer.x + dx, 16, 2000 - 16);
+        const newY = Phaser.Math.Clamp(this.myPlayer.y + dy, 16, 2000 - 16);
+        this.myPlayer.x = newX;
+        this.myPlayer.y = newY;
         this.myLabel.setPosition(this.myPlayer.x, this.myPlayer.y - 28);
         this.socket.emit("move", { x: this.myPlayer.x, y: this.myPlayer.y });
       }
