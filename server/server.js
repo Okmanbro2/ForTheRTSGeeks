@@ -32,6 +32,9 @@ io.on("connection", (socket) => {
       socket.broadcast.emit("playerMoved", { id: socket.id, x: data.x, y: data.y });
     }
   });
+  socket.on("chat", (data) => {
+    io.emit("chatMessage", { id: socket.id, name: players[socket.id]?.name || "Player", message: data.message });
+  });
   socket.on("disconnect", () => {
     delete players[socket.id];
     io.emit("playerLeft", socket.id);
