@@ -54,6 +54,25 @@ function startGame(playerName) {
       this.socket = io(SERVER_URL);
       dbg("Socket created");
 
+      spawnMe(p) {
+      dbg("spawnMe called at " + p.x + "," + p.y);
+      this.myPlayer = this.add.rectangle(p.x, p.y, 32, 32, 0x4fc3f7);
+      this.myLabel = this.add.text(p.x, p.y - 28, playerName, {
+        fontSize: "13px", color: "#ffffff",
+        stroke: "#000000", strokeThickness: 3
+      }).setOrigin(0.5);
+      this.cameras.main.startFollow(this.myPlayer, true, 0.1, 0.1);
+    }
+
+    spawnOther(p) {
+      const body = this.add.rectangle(p.x, p.y, 32, 32, 0xef5350);
+      const label = this.add.text(p.x, p.y - 28, p.name || "Player", {
+        fontSize: "13px", color: "#ffffff",
+        stroke: "#000000", strokeThickness: 3
+      }).setOrigin(0.5);
+      this.otherPlayers[p.id] = { body, label };
+    }
+
       this.socket.on("connect", () => {
         this.socket.emit("setName", playerName);
         dbg("Connected! ID: " + this.socket.id);
@@ -91,25 +110,6 @@ function startGame(playerName) {
           delete this.otherPlayers[id];
         }
       });
-    }
-
-    spawnMe(p) {
-      dbg("spawnMe called at " + p.x + "," + p.y);
-      this.myPlayer = this.add.rectangle(p.x, p.y, 32, 32, 0x4fc3f7);
-      this.myLabel = this.add.text(p.x, p.y - 28, playerName, {
-        fontSize: "13px", color: "#ffffff",
-        stroke: "#000000", strokeThickness: 3
-      }).setOrigin(0.5);
-      this.cameras.main.startFollow(this.myPlayer, true, 0.1, 0.1);
-    }
-
-    spawnOther(p) {
-      const body = this.add.rectangle(p.x, p.y, 32, 32, 0xef5350);
-      const label = this.add.text(p.x, p.y - 28, p.name || "Player", {
-        fontSize: "13px", color: "#ffffff",
-        stroke: "#000000", strokeThickness: 3
-      }).setOrigin(0.5);
-      this.otherPlayers[p.id] = { body, label };
     }
 
     update() {
