@@ -55,33 +55,29 @@ function startGame(playerName) {
       dbg("Socket created");
 
       this.socket.on("connect", () => {
-        this.socket.emit("setName", playerName);
+        this.socket.emit("join", { name: playerName });
         dbg("Connected! ID: " + this.socket.id);
       });
 
       this.socket.on("currentPlayers", (players) => {
         dbg("Got currentPlayers: " + Object.keys(players).length + " players");
-        
         Object.values(players).forEach((p) => {
-          if (p.id === this.socket.id) {
-            this.spawnMe(p);
-          }
-          // skip those who are unnamed
-          else if (p.name) {
-            this.spawnOther(p);
-          }
+          if (p.id === this.socket.id) this.spawnMe(p);
+          else this.spawnOther(p);
         });
       });
 
       this.socket.on("newPlayer", (p) => {
-        if (p.id === this.socket.id)
-            return;
-          if (this.otherPlayers[p.id])
-            return;
-          this.spawnOther(p);
-        });
-      }
-      
+        this.spawnOther(p);
+      });
+
+      this.socket.on("playerNamed", (data) => {
+        const other = this.otherPlayers[data.id];
+        if (other) {
+          other.label.setText(data.name);
+        }
+      });
+
       this.socket.on("playerMoved", (data) => {
         const other = this.otherPlayers[data.id];
         if (other) {
@@ -102,7 +98,7 @@ function startGame(playerName) {
     spawnMe(p) {
       dbg("spawnMe called at " + p.x + "," + p.y);
       this.myPlayer = this.add.rectangle(p.x, p.y, 32, 32, 0x4fc3f7);
-      this.myLabel = this.add.text(p.x, p.y - 28, playerName || "Player", {
+      this.myLabel = this.add.text(p.x, p.y - 28, playerName, {
         fontSize: "13px", color: "#ffffff",
         stroke: "#000000", strokeThickness: 3
       }).setOrigin(0.5);
@@ -110,28 +106,18 @@ function startGame(playerName) {
     }
 
     spawnOther(p) {
-      const body = this.add.rectangle(
-        p.x,
-        p.y,
-        32,
-        32,
-        0xef5350
-      );
-      const label = this.add.text(
-        p.x,
-        p.y - 28,
-        p.name,
-        {
-          fontSize: "13px",
-          color: "#ffffff",
-          stroke: "#000000",
-          strokeThickness: 3
+      const body = this.add.rectangle(p.x, p.y, 32, 32, 0xef5350);
+      const label = this.add.text(p.x, p.y - 28, p.name || "Player", {
+        fontSize: "13px", color: "#ffffff",
+        stroke: "#000000", strokeThickness: 3
+      }).setOrigin(0.5);
+      this.otherPlayers[p.id] = { body, label };
+
+      this.time.delayedCall(200, () => {
+        if (this.otherPlayers[p.id] && p.name && p.name !== "Player") {
+          this.otherPlayers[p.id].label.setText(p.name);
         }
-      ).setOrigin(0.5);
-      this.otherPlayers[p.id] = {
-        body,
-        label
-      };
+      });
     }
 
     update() {
