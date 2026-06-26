@@ -13,22 +13,23 @@ const io = new Server(httpServer, {
 
 const players = {};
 const SPEED = 3;
-const ZOMBIE_SPEED = 1.2;
-const ZOMBIE_SIZE = 28;
-const MAX_ZOMBIES = 6;
+const ENEMY_SPEED = 1.2;
+const ENEMY_SIZE = 28;       // collision diameter for enemy-enemy
+const ENEMY_PLAYER_SIZE = 30; // collision diameter for enemy-player (avg of 28 and 32)
+const MAX_ENEMIES = 6;
 const TICK_RATE = 1000 / 60; // 60 times per second
 
-const zombies = {};
-let zombieIdCounter = 0;
+const enemies = {};
+let enemyIdCounter = 0;
 
-function getNearestPlayer(zombie) {
+function getNearestPlayer(enemy) {
   let nearest = null;
   let nearestDist = Infinity;
 
   Object.values(players).forEach((p) => {
-    if (p.team === "zombie") return; // skip teammates when teams added
-    const dx = p.x - zombie.x;
-    const dy = p.y - zombie.y;
+    if (p.team === "enemy") return; // skip teammates when teams added
+    const dx = p.x - enemy.x;
+    const dy = p.y - enemy.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < nearestDist) {
       nearestDist = dist;
@@ -39,45 +40,46 @@ function getNearestPlayer(zombie) {
   return nearest;
 }
 
-function spawnZombie() {
-  if (Object.keys(zombies).length >= MAX_ZOMBIES) return;
+function spawnEnemy() {
+  if (Object.keys(enemies).length >= MAX_ENEMIES) return;
 
-  const id = "z_" + zombieIdCounter++;
+  const id = "e_" + enemyIdCounter++;
   const side = Math.floor(Math.random() * 4);
   let x, y;
 
-  // spawn
+  // spawn on a random edge
   if (side === 0) { x = Math.random() * 2000; y = 16; }
   else if (side === 1) { x = Math.random() * 2000; y = 1984; }
   else if (side === 2) { x = 16; y = Math.random() * 2000; }
   else { x = 1984; y = Math.random() * 2000; }
 
-  zombies[id] = {
+  enemies[id] = {
     id, x, y,
     targetId: null,
-    team: "zombie", // team-aware from the start
+    team: "enemy",
     hp: 100,
     maxHp: 100
   };
 
-  io.emit("zombieSpawned", zombies[id]);
+  io.emit("enemySpawned", enemies[id]);
 }
 
-setInterval(spawnZombie, 4000);
+setInterval(spawnEnemy, 4000);
 
-// retarget soons every second
+// retarget every second
 setInterval(() => {
-  Object.values(zombies).forEach((z) => {
-    const nearest = getNearestPlayer(z);
-    z.targetId = nearest ? nearest.id : null;
+  Object.values(enemies).forEach((e) => {
+    const nearest = getNearestPlayer(e);
+    e.targetId = nearest ? nearest.id : null;
   });
 }, 1000);
 
-// server looooop
+// server loop
 setInterval(() => {
   const playerList = Object.values(players);
+  const enemyList  = Object.values(enemies);
 
-  // mooooove
+  // move players
   playerList.forEach((p) => {
     if (p.inputs.up)    p.y = Math.max(16, p.y - SPEED);
     if (p.inputs.down)  p.y = Math.min(1984, p.y + SPEED);
@@ -85,29 +87,23 @@ setInterval(() => {
     if (p.inputs.right) p.x = Math.min(1984, p.x + SPEED);
   });
 
-  // pvp collision
-  const MIN_DIST = 32;
+  // player-player collision
+  const PLAYER_MIN_DIST = 32;
   for (let i = 0; i < playerList.length; i++) {
     for (let j = i + 1; j < playerList.length; j++) {
       const a = playerList[i];
       const b = playerList[j];
-
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < MIN_DIST && dist > 0) {
-        const overlap = (MIN_DIST - dist) / 2;
-        const nx = dx / dist; // normalized direction
+      if (dist < PLAYER_MIN_DIST && dist > 0) {
+        const overlap = (PLAYER_MIN_DIST - dist) / 2;
+        const nx = dx / dist;
         const ny = dy / dist;
-
-        // puuush
         a.x -= nx * overlap;
         a.y -= ny * overlap;
         b.x += nx * overlap;
         b.y += ny * overlap;
-
-        // keep in bounds
         a.x = Math.max(16, Math.min(1984, a.x));
         a.y = Math.max(16, Math.min(1984, a.y));
         b.x = Math.max(16, Math.min(1984, b.x));
@@ -116,32 +112,73 @@ setInterval(() => {
     }
   }
 
-  // live pos
+  // broadcast updated player positions
   playerList.forEach((p) => {
     io.emit("playerMoved", { id: p.id, x: p.x, y: p.y, name: p.name, angle: p.angle });
   });
 
-  // move entities
-  Object.values(zombies).forEach((z) => {
-    const target = z.targetId ? players[z.targetId] : null;
+  // move enemies toward their target
+  enemyList.forEach((e) => {
+    const target = e.targetId ? players[e.targetId] : null;
     if (!target) return;
-
-    const dx = target.x - z.x;
-    const dy = target.y - z.y;
+    const dx = target.x - e.x;
+    const dy = target.y - e.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-
     if (dist > 2) {
-      z.x += (dx / dist) * ZOMBIE_SPEED;
-      z.y += (dy / dist) * ZOMBIE_SPEED;
-      z.x = Math.max(16, Math.min(1984, z.x));
-      z.y = Math.max(16, Math.min(1984, z.y));
+      e.x += (dx / dist) * ENEMY_SPEED;
+      e.y += (dy / dist) * ENEMY_SPEED;
+      e.x = Math.max(16, Math.min(1984, e.x));
+      e.y = Math.max(16, Math.min(1984, e.y));
     }
   });
 
-  // broadcast zombies (soon npcs tho) positions
-  if (Object.keys(zombies).length > 0) {
-    io.emit("zombiesMoved", Object.values(zombies).map(z => ({
-      id: z.id, x: z.x, y: z.y
+  // enemy-enemy collision
+  for (let i = 0; i < enemyList.length; i++) {
+    for (let j = i + 1; j < enemyList.length; j++) {
+      const a = enemyList[i];
+      const b = enemyList[j];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < ENEMY_SIZE && dist > 0) {
+        const overlap = (ENEMY_SIZE - dist) / 2;
+        const nx = dx / dist;
+        const ny = dy / dist;
+        a.x -= nx * overlap;
+        a.y -= ny * overlap;
+        b.x += nx * overlap;
+        b.y += ny * overlap;
+        a.x = Math.max(16, Math.min(1984, a.x));
+        a.y = Math.max(16, Math.min(1984, a.y));
+        b.x = Math.max(16, Math.min(1984, b.x));
+        b.y = Math.max(16, Math.min(1984, b.y));
+      }
+    }
+  }
+
+  // enemy-player collision
+  enemyList.forEach((e) => {
+    playerList.forEach((p) => {
+      const dx = p.x - e.x;
+      const dy = p.y - e.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < ENEMY_PLAYER_SIZE && dist > 0) {
+        const overlap = ENEMY_PLAYER_SIZE - dist;
+        const nx = dx / dist;
+        const ny = dy / dist;
+        // only push the player; enemy keeps advancing
+        p.x += nx * overlap;
+        p.y += ny * overlap;
+        p.x = Math.max(16, Math.min(1984, p.x));
+        p.y = Math.max(16, Math.min(1984, p.y));
+      }
+    });
+  });
+
+  // broadcast enemy positions
+  if (enemyList.length > 0) {
+    io.emit("enemiesMoved", enemyList.map(e => ({
+      id: e.id, x: e.x, y: e.y
     })));
   }
 }, TICK_RATE);
@@ -159,11 +196,12 @@ io.on("connection", (socket) => {
   };
 
   socket.emit("currentPlayers", players);
-  
-  Object.values(zombies).forEach((z) => {
-    socket.emit("zombieSpawned", z);
+
+  // send existing enemies to the newly connected player
+  Object.values(enemies).forEach((e) => {
+    socket.emit("enemySpawned", e);
   });
-  
+
   socket.broadcast.emit("newPlayer", players[socket.id]);
 
   socket.on("setName", (name) => {
