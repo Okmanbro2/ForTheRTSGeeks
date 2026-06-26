@@ -78,7 +78,6 @@ function startGame(playerName, playerTeam) {
         if (other) other.label.setText(data.name);
       });
 
-      // Server now includes team in every playerMoved broadcast
       this.socket.on("playerMoved", (data) => {
         if (data.id === this.socket.id) {
           if (this.myPlayer) {
@@ -124,6 +123,12 @@ function startGame(playerName, playerTeam) {
           delete this.otherPlayers[id];
           this.updatePlayerList();
         }
+      });
+
+      this.socket.on("gameTick", (data) => {
+        const mm = String(data.minutes).padStart(2, "0");
+        const ss = String(data.seconds).padStart(2, "0");
+        this.timerDiv.textContent = `${mm}:${ss}`;
       });
 
       // health bar
