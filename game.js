@@ -360,7 +360,7 @@ function startGame(playerName, playerTeam) {
         color: white; font-size:22px; font-weight:bold;
         letter-spacing:0.05em; line-height:1;
       `;
-      this.timerDiv.textContent = "10:00";
+      this.timerDiv.textContent = "25:00";
       timerBlock.appendChild(this.timerDiv);
       
       // worstendom side
