@@ -167,6 +167,35 @@ function startGame(playerName) {
         this.addChatLog(data.name, data.message);
       });
 
+      this.zombies = {};
+
+      this.socket.on("zombieSpawned", (z) => {
+        const body = this.add.rectangle(z.x, z.y, 28, 28, 0x2d5a1b);
+        const label = this.add.text(z.x, z.y - 22, "Z", {
+          fontSize: "11px", color: "#ff4444",
+          stroke: "#000", strokeThickness: 2
+        }).setOrigin(0.5);
+        this.zombies[z.id] = { body, label };
+      });
+
+      this.socket.on("zombiesMoved", (zombieList) => {
+        zombieList.forEach((z) => {
+          const zObj = this.zombies[z.id];
+          if (zObj) {
+            zObj.body.setPosition(z.x, z.y);
+            zObj.label.setPosition(z.x, z.y - 22);
+          }
+        });
+      });
+
+      this.socket.on("zombieLeft", (id) => {
+        if (this.zombies[id]) {
+          this.zombies[id].body.destroy();
+          this.zombies[id].label.destroy();
+          delete this.zombies[id];
+        }
+      });
+
       this.playerListDiv = document.createElement("div");
       this.playerListDiv.style.cssText = `
         position: fixed; top: 10px; right: 10px;
