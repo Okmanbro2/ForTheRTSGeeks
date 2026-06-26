@@ -91,6 +91,59 @@ function startGame(playerName) {
           delete this.otherPlayers[id];
         }
       });
+
+      this.chatInput = document.createElement("input");
+      this.chatInput.type = "text";
+      this.chatInput.maxLength = 64;
+      this.chatInput.style.cssText = `
+        position: fixed; bottom: 40px; left: 50%;
+        transform: translateX(-50%);
+        width: 400px; padding: 8px 12px;
+        background: rgba(0,0,0,0.7); color: white;
+        border: 2px solid rgba(255,255,255,0.4);
+        border-radius: 6px; font-size: 14px;
+        display: none; outline: none; z-index: 999;
+      `;
+      document.body.appendChild(this.chatInput);
+      this.chatOpen = false;
+
+      this.chatLog = document.createElement("div");
+      this.chatLog.style.cssText = `
+        position: fixed; bottom: 70px; left: 20px;
+        width: 320px; max-height: 150px;
+        overflow: hidden; pointer-events: none;
+        z-index: 999; display: flex;
+        flex-direction: column; gap: 2px;
+      `;
+      document.body.appendChild(this.chatLog);
+
+      this.input.keyboard.on("keydown-T", () => {
+        if (!this.chatOpen) {
+          this.chatOpen = true;
+          this.chatInput.style.display = "block";
+          this.chatInput.value = "";
+          this.chatInput.focus();
+        }
+      });
+
+      this.chatInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          const msg = this.chatInput.value.trim();
+          if (msg) this.socket.emit("chat", { message: msg });
+          this.chatInput.style.display = "none";
+          this.chatInput.value = "";
+          this.chatOpen = false;
+        }
+        if (e.key === "Escape") {
+          this.chatInput.style.display = "none";
+          this.chatOpen = false;
+        }
+      });
+
+      this.socket.on("chatMessage", (data) => {
+        this.showChatBubble(data.id, data.message);
+        this.addChatLog(data.name, data.message);
+      });
     }
 
      spawnMe(p) {
@@ -112,8 +165,42 @@ function startGame(playerName) {
       this.otherPlayers[p.id] = { body, label };
     }
 
+    showChatBubble(id, message) {
+      const isMe = this.socket && id === this.socket.id;
+      const target = isMe ? this.myPlayer : (this.otherPlayers[id] ? this.otherPlayers[id].body : null);
+      if (!target) return;
+
+      const bubble = this.add.text(target.x, target.y - 50, message, {
+        fontSize: "12px", color: "#ffffff",
+        backgroundColor: "#000000cc",
+        padding: { x: 6, y: 4 },
+        borderRadius: 4
+      }).setOrigin(0.5);
+
+      this.time.delayedCall(3000, () => bubble.destroy());
+    }
+
+    addChatLog(name, message) {
+      const line = document.createElement("div");
+      line.style.cssText = `
+        background: rgba(0,0,0,0.6);
+        color: white; font-size: 13px;
+        font-family: Arial, sans-serif;
+        padding: 3px 8px; border-radius: 4px;
+      `;
+      line.innerHTML = `<span style="color:#4fc3f7">${name}</span>: ${message}`;
+      this.chatLog.appendChild(line);
+
+      setTimeout(() => line.remove(), 8000);
+
+      while (this.chatLog.children.length > 6) {
+        this.chatLog.removeChild(this.chatLog.firstChild);
+      }
+    }
+
     update() {
       if (!this.myPlayer) return;
+      if (this.chatOpen) return;
 
       const speed = 3;
       let dx = 0, dy = 0;
