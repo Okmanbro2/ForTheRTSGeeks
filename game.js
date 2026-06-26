@@ -233,7 +233,7 @@ function startGame(playerName, playerTeam) {
           if (!obj) return;
           obj.body.setPosition(e.x, e.y);
           obj.label.setPosition(e.x, e.y - 22);
-          // Update color if team changed (future-proofing)
+          // update color if team changed
           if (e.team && e.team !== obj.team) {
             obj.body.setFillStyle(teamHex(e.team));
             obj.label.setColor(teamCss(e.team));
@@ -323,7 +323,54 @@ function startGame(playerName, playerTeam) {
         this.inventorySlots.push(slot);
       }
 
+      // scoreboard
+      this.scoreboardDiv = document.createElement("div");
+      this.scoreboardDiv.style.cssText = `
+        position: fixed; top: 10px; left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.6);
+        border-radius: 8px;
+        padding: 6px 14px;
+        z-index: 999;
+        pointer-events: none;
+        font-family: Arial, sans-serif;
+        display: flex; align-items: center; gap: 16px;
+        min-width: 320px;
+      `;
       
+      // havatica side
+      const havSide = document.createElement("div");
+      havSide.style.cssText = "display:flex; flex-direction:column; align-items:flex-start; flex:1;";
+      havSide.innerHTML = `
+        <span style="color:#c9a0f0; font-size:11px; font-weight:bold; letter-spacing:0.05em;">HAVATICA</span>
+        <span style="color:#aaa; font-size:10px;">Base: <span id="hav-base-hp" style="color:white">—</span></span>
+        <span style="color:#aaa; font-size:10px;">Lead: <span id="hav-leader" style="color:#c9a0f0">—</span></span>
+      `;
+      
+      // timer center
+      const timerBlock = document.createElement("div");
+      timerBlock.style.cssText = "display:flex; flex-direction:column; align-items:center; gap:2px;";
+      this.timerDiv = document.createElement("div");
+      this.timerDiv.style.cssText = `
+        color: white; font-size:22px; font-weight:bold;
+        letter-spacing:0.05em; line-height:1;
+      `;
+      this.timerDiv.textContent = "10:00";
+      timerBlock.appendChild(this.timerDiv);
+      
+      // worstendom side
+      const worSide = document.createElement("div");
+      worSide.style.cssText = "display:flex; flex-direction:column; align-items:flex-end; flex:1;";
+      worSide.innerHTML = `
+        <span style="color:#777; font-size:11px; font-weight:bold; letter-spacing:0.05em;">WORSTENDOM</span>
+        <span style="color:#aaa; font-size:10px;">Base: <span id="wor-base-hp" style="color:white">—</span></span>
+        <span style="color:#aaa; font-size:10px;">Lead: <span id="wor-leader" style="color:#777">—</span></span>
+      `;
+      
+      this.scoreboardDiv.appendChild(havSide);
+      this.scoreboardDiv.appendChild(timerBlock);
+      this.scoreboardDiv.appendChild(worSide);
+      document.body.appendChild(this.scoreboardDiv);
 
       document.addEventListener("keydown", (e) => {
         const idx = ["1","2","3","4","5"].indexOf(e.key);
