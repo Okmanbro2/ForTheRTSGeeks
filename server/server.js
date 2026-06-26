@@ -13,7 +13,65 @@ const io = new Server(httpServer, {
 
 const players = {};
 const SPEED = 3;
+const ZOMBIE_SPEED = 1.2;
+const ZOMBIE_SIZE = 28;
+const MAX_ZOMBIES = 6;
 const TICK_RATE = 1000 / 60; // 60 times per second
+
+const zombies = {};
+let zombieIdCounter = 0;
+
+function getNearestPlayer(zombie) {
+  let nearest = null;
+  let nearestDist = Infinity;
+
+  Object.values(players).forEach((p) => {
+    if (p.team === "zombie") return; // skip teammates when teams added
+    const dx = p.x - zombie.x;
+    const dy = p.y - zombie.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < nearestDist) {
+      nearestDist = dist;
+      nearest = p;
+    }
+  });
+
+  return nearest;
+}
+
+function spawnZombie() {
+  if (Object.keys(zombies).length >= MAX_ZOMBIES) return;
+
+  const id = "z_" + zombieIdCounter++;
+  const side = Math.floor(Math.random() * 4);
+  let x, y;
+
+  // spawn
+  if (side === 0) { x = Math.random() * 2000; y = 16; }
+  else if (side === 1) { x = Math.random() * 2000; y = 1984; }
+  else if (side === 2) { x = 16; y = Math.random() * 2000; }
+  else { x = 1984; y = Math.random() * 2000; }
+
+  zombies[id] = {
+    id, x, y,
+    targetId: null,
+    team: "zombie", // team-aware from the start
+    hp: 100,
+    maxHp: 100
+  };
+
+  io.emit("zombieSpawned", zombies[id]);
+}
+
+setInterval(spawnZombie, 4000);
+
+// retarget soons every second
+setInterval(() => {
+  Object.values(zombies).forEach((z) => {
+    const nearest = getNearestPlayer(z);
+    z.targetId = nearest ? nearest.id : null;
+  });
+}, 1000);
 
 // server looooop
 setInterval(() => {
@@ -63,6 +121,29 @@ setInterval(() => {
     io.emit("playerMoved", { id: p.id, x: p.x, y: p.y, name: p.name, angle: p.angle });
   });
 
+  // move entities
+  Object.values(zombies).forEach((z) => {
+    const target = z.targetId ? players[z.targetId] : null;
+    if (!target) return;
+
+    const dx = target.x - z.x;
+    const dy = target.y - z.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > 2) {
+      z.x += (dx / dist) * ZOMBIE_SPEED;
+      z.y += (dy / dist) * ZOMBIE_SPEED;
+      z.x = Math.max(16, Math.min(1984, z.x));
+      z.y = Math.max(16, Math.min(1984, z.y));
+    }
+  });
+
+  // broadcast zombies (soon npcs tho) positions
+  if (Object.keys(zombies).length > 0) {
+    io.emit("zombiesMoved", Object.values(zombies).map(z => ({
+      id: z.id, x: z.x, y: z.y
+    })));
+  }
 }, TICK_RATE);
 
 io.on("connection", (socket) => {
@@ -78,6 +159,11 @@ io.on("connection", (socket) => {
   };
 
   socket.emit("currentPlayers", players);
+  
+  Object.values(zombies).forEach((z) => {
+    socket.emit("zombieSpawned", z);
+  });
+  
   socket.broadcast.emit("newPlayer", players[socket.id]);
 
   socket.on("setName", (name) => {
