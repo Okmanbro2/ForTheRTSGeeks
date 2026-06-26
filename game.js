@@ -107,7 +107,7 @@ function startGame(playerName) {
 
     spawnOther(p) {
       const body = this.add.rectangle(p.x, p.y, 32, 32, 0xef5350);
-      const label = this.add.text(p.x, p.y - 28, p.name || "Player", {
+      const label = this.add.text(p.x, p.y - 28, p.name, {
         fontSize: "13px", color: "#ffffff",
         stroke: "#000000", strokeThickness: 3
       }).setOrigin(0.5);
