@@ -180,7 +180,7 @@ function startGame(playerName) {
       document.body.appendChild(this.playerListDiv);
       this.updatePlayerList();
 
-      this.selectedSlot = 0;
+      this.selectedSlot = -1;
       this.inventoryDiv = document.createElement("div");
       this.inventoryDiv.style.cssText = `
         position: fixed; bottom: 16px; left: 50%;
@@ -196,22 +196,35 @@ function startGame(playerName) {
         slot.style.cssText = `
           width: 56px; height: 56px;
           background: rgba(40,40,40,0.7);
-          border: 2px solid ${i === 0 ? "#4fc3f7" : "rgba(255,255,255,0.15)"};
+          border: 3px solid ${i === 0 ? "#4fc3f7" : "rgba(255,255,255,0.15)"};
           border-radius: 6px;
           display: flex; align-items: center; justify-content: center;
-          color: rgba(255,255,255,0.3);
-          font-size: 11px; font-family: Arial, sans-serif;
           box-sizing: border-box;
+          cursor: pointer;
+          pointer-events: all;
+          transition: border-color 0.1s;
         `;
-        slot.textContent = i + 1;
+        slot.addEventListener("click", () => {
+          if (this.selectedSlot === i) {
+            this.selectSlot(-1); // unequip
+          } else {
+            this.selectSlot(i);
+          }
+        });
         this.inventoryDiv.appendChild(slot);
         this.inventorySlots.push(slot);
       }
-
+      
       document.addEventListener("keydown", (e) => {
         const slots = ["1","2","3","4","5"];
         const idx = slots.indexOf(e.key);
-        if (idx !== -1 && !this.chatOpen) this.selectSlot(idx);
+        if (idx !== -1 && !this.chatOpen) {
+          if (this.selectedSlot === idx) {
+            this.selectSlot(-1);
+          } else {
+            this.selectSlot(idx);
+          }
+        }
       });
     }
 
@@ -301,11 +314,20 @@ function startGame(playerName) {
       });
     }
 
-    selectSlot(index) {
+   selectSlot(index) {
       if (!this.inventorySlots) return;
-      this.inventorySlots[this.selectedSlot].style.border = "2px solid rgba(255,255,255,0.15)";
+
+      if (this.selectedSlot >= 0) {
+        this.inventorySlots[this.selectedSlot].style.border = "3px solid rgba(255,255,255,0.15)";
+      }
+     
+      if (index === -1 || index === this.selectedSlot) {
+        this.selectedSlot = -1;
+        return;
+      }
+
       this.selectedSlot = index;
-      this.inventorySlots[this.selectedSlot].style.border = "2px solid #4fc3f7";
+      this.inventorySlots[this.selectedSlot].style.border = "3px solid #4fc3f7";
     }
 
     update() {
