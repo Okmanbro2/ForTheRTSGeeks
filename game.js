@@ -98,7 +98,7 @@ function startGame(playerName) {
     spawnMe(p) {
       dbg("spawnMe called at " + p.x + "," + p.y);
       this.myPlayer = this.add.rectangle(p.x, p.y, 32, 32, 0x4fc3f7);
-      this.myLabel = this.add.text(p.x, p.y - 28, playerName, {
+      this.myLabel = this.add.text(p.x, p.y - 28, playerName || "Player", {
         fontSize: "13px", color: "#ffffff",
         stroke: "#000000", strokeThickness: 3
       }).setOrigin(0.5);
