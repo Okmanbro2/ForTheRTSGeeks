@@ -117,9 +117,9 @@ function startGame(playerName) {
       this.chatInput.type = "text";
       this.chatInput.maxLength = 64;
       this.chatInput.style.cssText = `
-        position: fixed; bottom: 40px; left: 50%;
+        position: fixed; bottom: 16px; left: calc(50% - 310px);
         transform: translateX(-50%);
-        width: 400px; padding: 8px 12px;
+        width: 280px; padding: 8px 12px;
         background: rgba(0,0,0,0.7); color: white;
         border: 2px solid rgba(255,255,255,0.4);
         border-radius: 6px; font-size: 14px;
@@ -208,10 +208,11 @@ function startGame(playerName) {
         this.inventorySlots.push(slot);
       }
 
-      for (let i = 1; i <= 5; i++) {
-        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes["ONE".replace("ONE", ["ONE","TWO","THREE","FOUR","FIVE"][i-1])]).on("down", () => {
-          this.selectSlot(i - 1);
-        });
+      document.addEventListener("keydown", (e) => {
+        const slots = ["1","2","3","4","5"];
+        const idx = slots.indexOf(e.key);
+        if (idx !== -1 && !this.chatOpen) this.selectSlot(idx);
+      });
       }
     }
 
