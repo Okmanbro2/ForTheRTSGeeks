@@ -167,20 +167,20 @@ function startGame(playerName) {
         this.addChatLog(data.name, data.message);
       });
 
-      this.zombies = {};
+      this.enemies = {};
 
-      this.socket.on("zombieSpawned", (z) => {
+      this.socket.on("enemySpawned", (z) => {
         const body = this.add.rectangle(z.x, z.y, 28, 28, 0x2d5a1b);
         const label = this.add.text(z.x, z.y - 22, "Z", {
           fontSize: "11px", color: "#ff4444",
           stroke: "#000", strokeThickness: 2
         }).setOrigin(0.5);
-        this.zombies[z.id] = { body, label };
+        this.enemies[z.id] = { body, label };
       });
 
-      this.socket.on("zombiesMoved", (zombieList) => {
-        zombieList.forEach((z) => {
-          const zObj = this.zombies[z.id];
+      this.socket.on("enemiesMoved", (enemyList) => {
+        enemyList.forEach((z) => {
+          const zObj = this.enemies[z.id];
           if (zObj) {
             zObj.body.setPosition(z.x, z.y);
             zObj.label.setPosition(z.x, z.y - 22);
@@ -188,11 +188,11 @@ function startGame(playerName) {
         });
       });
 
-      this.socket.on("zombieLeft", (id) => {
-        if (this.zombies[id]) {
-          this.zombies[id].body.destroy();
-          this.zombies[id].label.destroy();
-          delete this.zombies[id];
+      this.socket.on("enemyLeft", (id) => {
+        if (this.enemies[id]) {
+          this.enemies[id].body.destroy();
+          this.enemies[id].label.destroy();
+          delete this.enemies[id];
         }
       });
 
