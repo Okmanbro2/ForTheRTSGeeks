@@ -368,7 +368,7 @@ function startGame(playerName, playerTeam) {
       }
       if (index === -1) { this.selectedSlot = -1; return; }
       this.selectedSlot = index;
-      this.inventorySlots[index].style.border = `3px solid ${teamCss(this.myTeam)}`;
+      this.inventorySlots[index].style.border = "5px solid #4a90d9";
     }
 
     // update loop
