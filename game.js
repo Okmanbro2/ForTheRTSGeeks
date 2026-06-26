@@ -263,6 +263,7 @@ function startGame(playerName) {
         }
       });
     }
+  }
 
   new Phaser.Game({
     type: Phaser.AUTO,
