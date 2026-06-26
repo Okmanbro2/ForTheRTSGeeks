@@ -33,6 +33,12 @@ io.on("connection", (socket) => {
       socket.broadcast.emit("playerMoved", { id: socket.id, x: data.x, y: data.y, name: players[socket.id].name });
     }
   });
+  socket.on("rotate", (data) => {
+    if (players[socket.id]) {
+      players[socket.id].angle = data.angle;
+      socket.broadcast.emit("playerRotated", { id: socket.id, angle: data.angle });
+    }
+  });
   socket.on("chat", (data) => {
     io.emit("chatMessage", { id: socket.id, name: players[socket.id]?.name || "Player", message: data.message });
   });
