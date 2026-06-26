@@ -78,11 +78,19 @@ function startGame(playerName) {
       });
 
      this.socket.on("playerMoved", (data) => {
-        const other = this.otherPlayers[data.id];
-        if (other) {
-          other.body.setPosition(data.x, data.y);
-          other.label.setPosition(data.x, data.y - 28);
-          if (data.name) other.label.setText(data.name);
+        if (data.id === this.socket.id) {
+          if (this.myPlayer) {
+            this.myPlayer.x = data.x;
+            this.myPlayer.y = data.y;
+            this.myLabel.setPosition(data.x, data.y - 28);
+          }
+        } else {
+          const other = this.otherPlayers[data.id];
+          if (other) {
+            other.body.setPosition(data.x, data.y);
+            other.label.setPosition(data.x, data.y - 28);
+            if (data.name) other.label.setText(data.name);
+          }
         }
       });
 
@@ -220,9 +228,17 @@ function startGame(playerName) {
 
     update() {
       if (!this.myPlayer) return;
-      if (this.chatOpen) return;
-      
-      if (this.myPlayer) {
+
+      const inputs = {
+        up:    this.cursors.up.isDown    || this.wasd.up.isDown,
+        down:  this.cursors.down.isDown  || this.wasd.down.isDown,
+        left:  this.cursors.left.isDown  || this.wasd.left.isDown,
+        right: this.cursors.right.isDown || this.wasd.right.isDown
+      };
+
+      if (!this.chatOpen) {
+        this.socket.emit("inputs", inputs);
+
         const pointer = this.input.activePointer;
         const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
         const angle = Phaser.Math.Angle.Between(
@@ -233,25 +249,7 @@ function startGame(playerName) {
         this.socket.emit("rotate", { angle: angle + Math.PI / 2 });
       }
 
-      const speed = 3;
-      let dx = 0, dy = 0;
-      let moved = false;
-
-      if (this.cursors.left.isDown  || this.wasd.left.isDown)  { dx = -speed; moved = true; }
-      if (this.cursors.right.isDown || this.wasd.right.isDown) { dx =  speed; moved = true; }
-      if (this.cursors.up.isDown    || this.wasd.up.isDown)    { dy = -speed; moved = true; }
-      if (this.cursors.down.isDown  || this.wasd.down.isDown)  { dy =  speed; moved = true; }
-
-      if (moved) {
-        const newX = Phaser.Math.Clamp(this.myPlayer.x + dx, 16, 2000 - 16);
-        const newY = Phaser.Math.Clamp(this.myPlayer.y + dy, 16, 2000 - 16);
-        this.myPlayer.x = newX;
-        this.myPlayer.y = newY;
-        this.myLabel.setPosition(this.myPlayer.x, this.myPlayer.y - 28);
-        this.socket.emit("move", { x: this.myPlayer.x, y: this.myPlayer.y });
-      }
-
-      if (this.myPlayer && this.myPlayer.chatBubbles) {
+      if (this.myPlayer.chatBubbles) {
         this.myPlayer.chatBubbles.forEach((bubble, i) => {
           bubble.setPosition(this.myPlayer.x, this.myPlayer.y - 55 - (i * 26));
         });
@@ -265,7 +263,6 @@ function startGame(playerName) {
         }
       });
     }
-  }
 
   new Phaser.Game({
     type: Phaser.AUTO,
