@@ -80,7 +80,7 @@ function spawnEnemy() {
   // alt teams
   const team = teamNames[enemyIdCounter % teamNames.length];
 
-  enemies[id] = { id, x, y, targetId: null, team, hp: 100, maxHp: 100 };
+  enemies[id] = { id, x, y, targetId: null, team, hp: 100, maxHp: 100, wanderAngle: Math.random() * Math.PI * 2 };
   io.emit("enemySpawned", enemies[id]);
 }
 
@@ -135,18 +135,39 @@ setInterval(() => {
   });
 
   // move chuds
-  enemyList.forEach((e) => {
-    const target = e.targetId ? players[e.targetId] : null;
-    if (!target) return;
+   enemyList.forEach((e) => {
+  const target = e.targetId ? players[e.targetId] : null;
+
+  if (target) {
+    // chase hostile player
     const dx   = target.x - e.x;
     const dy   = target.y - e.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist > 2) {
       e.x += (dx / dist) * ENEMY_SPEED;
       e.y += (dy / dist) * ENEMY_SPEED;
-      e.x = Math.max(16, Math.min(1984, e.x));
-      e.y = Math.max(16, Math.min(1984, e.y));
     }
+  } else {
+    // wander
+    if (!e.wanderAngle || Math.random() < 0.01) {
+        e.wanderAngle = Math.random() * Math.PI * 2;
+      }
+      e.x += Math.cos(e.wanderAngle) * ENEMY_SPEED;
+      e.y += Math.sin(e.wanderAngle) * ENEMY_SPEED;
+
+    // bounce off walls instead of clamping so they don't pile up at edges
+      if (e.x < 16 || e.x > 1984) {
+        e.wanderAngle = Math.PI - e.wanderAngle;
+        e.x = Math.max(16, Math.min(1984, e.x));
+      }
+      if (e.y < 16 || e.y > 1984) {
+        e.wanderAngle = -e.wanderAngle;
+        e.y = Math.max(16, Math.min(1984, e.y));
+      }
+    }
+
+    e.x = Math.max(16, Math.min(1984, e.x));
+    e.y = Math.max(16, Math.min(1984, e.y));
   });
 
   // eve collision
@@ -174,7 +195,6 @@ setInterval(() => {
   // pve collision
   enemyList.forEach((e) => {
     playerList.forEach((p) => {
-      if (!areHostile(e.team, p.team)) return; // don't push friendlies
       const dx   = p.x - e.x;
       const dy   = p.y - e.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
