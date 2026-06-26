@@ -42,6 +42,8 @@ const ENEMY_PLAYER_SIZE = 30;   // enemy-player collision diameter
 const MAX_NPCS       = 4;
 const TICK_RATE         = 1000 / 60;
 
+let gameClock = 600; // 10 mins
+
 const enemies = {};
 let enemyIdCounter = 0;
 
@@ -94,6 +96,17 @@ setInterval(() => {
   });
 }, 1000);
 
+// game clock
+setInterval(() => {
+  gameClock--;
+  if (gameClock <= 0) gameClock = 600;
+
+  const minutes = Math.floor(gameClock / 60);
+  const seconds = gameClock % 60;
+  io.emit("gameTick", { minutes, seconds });
+}, 1000);
+
+// other
 setInterval(() => {
   const playerList = Object.values(players);
   const enemyList  = Object.values(enemies);
