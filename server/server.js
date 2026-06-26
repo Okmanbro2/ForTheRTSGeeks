@@ -99,7 +99,7 @@ setInterval(() => {
 // game clock
 setInterval(() => {
   gameClock--;
-  if (gameClock <= 0) gameClock = 600;
+  if (gameClock <= 0) gameClock = 1500;
 
   const minutes = Math.floor(gameClock / 60);
   const seconds = gameClock % 60;
