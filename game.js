@@ -349,7 +349,7 @@ function startGame(playerName, playerTeam) {
       havSide.innerHTML = `
         <span style="color:#c9a0f0; font-size:11px; font-weight:bold; letter-spacing:0.05em;">HAVATICA</span>
         <span style="color:#aaa; font-size:10px;">Base: <span id="hav-base-hp" style="color:white">—</span></span>
-        <span style="color:#aaa; font-size:10px;">Lead: <span id="hav-leader" style="color:#c9a0f0">—</span></span>
+        <span style="color:#aaa; font-size:10px;">Leader: <span id="hav-leader" style="color:#c9a0f0">—</span></span>
       `;
       
       // timer center
@@ -369,7 +369,7 @@ function startGame(playerName, playerTeam) {
       worSide.innerHTML = `
         <span style="color:#777; font-size:11px; font-weight:bold; letter-spacing:0.05em;">WORSTENDOM</span>
         <span style="color:#aaa; font-size:10px;">Base: <span id="wor-base-hp" style="color:white">—</span></span>
-        <span style="color:#aaa; font-size:10px;">Lead: <span id="wor-leader" style="color:#777">—</span></span>
+        <span style="color:#aaa; font-size:10px;">Leader: <span id="wor-leader" style="color:#777">—</span></span>
       `;
       
       this.scoreboardDiv.appendChild(havSide);
