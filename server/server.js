@@ -29,7 +29,8 @@ io.on("connection", (socket) => {
     if (players[socket.id]) {
       players[socket.id].x = data.x;
       players[socket.id].y = data.y;
-      socket.broadcast.emit("playerMoved", { id: socket.id, x: data.x, y: data.y });
+     // socket.broadcast.emit("playerMoved", { id: socket.id, x: data.x, y: data.y });
+      socket.broadcast.emit("playerMoved", { id: socket.id, x: data.x, y: data.y, name: players[socket.id].name });
     }
   });
   socket.on("chat", (data) => {
