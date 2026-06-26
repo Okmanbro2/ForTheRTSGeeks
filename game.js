@@ -1,36 +1,34 @@
+// ─────────────────────────────────────────────
+//  note to self add team colors for new teams
+// ─────────────────────────────────────────────
+const TEAM_COLORS = {
+  havatica:   { hex: 0xc9a0f0, css: "#c9a0f0" },
+  worstendom: { hex: 0x777777, css: "#777777" }
+};
+
+function teamHex(team) { return TEAM_COLORS[team]?.hex ?? 0xaaaaaa; }
+function teamCss(team) { return TEAM_COLORS[team]?.css ?? "#aaaaaa"; }
+
+// ─────────────────────────────────────────────
+
 function dbg(msg) {
   const log = document.getElementById("debugLog");
   if (log) log.innerHTML += msg + "<br>";
 }
 
-const joinBtn = document.getElementById("joinBtn");
-const nameInput = document.getElementById("nameInput");
-const nameScreen = document.getElementById("nameScreen");
-const gameContainer = document.getElementById("gameContainer");
-
 const SERVER_URL = "https://forthertsgeeks-production.up.railway.app";
 
-joinBtn.addEventListener("click", () => {
-  const name = nameInput.value.trim();
-  if (!name) { nameInput.placeholder = "Please enter a name!"; return; }
-  nameScreen.style.display = "none";
-  gameContainer.style.display = "block";
-  startGame(name);
-});
-
-nameInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") joinBtn.click();
-});
-
-function startGame(playerName) {
+// startGame is called by index.html after the player picks name + team
+function startGame(playerName, playerTeam) {
 
   class GameScene extends Phaser.Scene {
     constructor() { super("GameScene"); }
 
     create() {
       this.otherPlayers = {};
-      this.myPlayer = null;
-      this.myLabel = null;
+      this.myPlayer     = null;
+      this.myLabel      = null;
+      this.myTeam       = playerTeam;
 
       this.add.rectangle(0, 0, 2000, 2000, 0x3a7d44).setOrigin(0, 0);
 
@@ -45,25 +43,25 @@ function startGame(playerName) {
 
       this.cursors = this.input.keyboard.createCursorKeys();
       this.wasd = this.input.keyboard.addKeys({
-        up: Phaser.Input.Keyboard.KeyCodes.W,
-        down: Phaser.Input.Keyboard.KeyCodes.S,
-        left: Phaser.Input.Keyboard.KeyCodes.A,
+        up:    Phaser.Input.Keyboard.KeyCodes.W,
+        down:  Phaser.Input.Keyboard.KeyCodes.S,
+        left:  Phaser.Input.Keyboard.KeyCodes.A,
         right: Phaser.Input.Keyboard.KeyCodes.D
       });
       this.input.keyboard.disableGlobalCapture();
 
-      // only after scene ready yo
       this.socket = io(SERVER_URL);
       dbg("Socket created");
 
       this.socket.on("connect", () => {
         this.myName = playerName;
         this.socket.emit("setName", playerName);
-        dbg("Connected! ID: " + this.socket.id);
+        this.socket.emit("setTeam", playerTeam);
+        dbg("Connected! ID: " + this.socket.id + " | Team: " + playerTeam);
       });
 
       this.socket.on("currentPlayers", (players) => {
-        dbg("Got currentPlayers: " + Object.keys(players).length + " players");
+        dbg("Got currentPlayers: " + Object.keys(players).length);
         Object.values(players).forEach((p) => {
           if (p.id === this.socket.id) this.spawnMe(p);
           else this.spawnOther(p);
@@ -76,13 +74,12 @@ function startGame(playerName) {
       });
 
       this.socket.on("playerNamed", (data) => {
-        dbg("playerNamed: " + data.id + " = " + data.name);
         const other = this.otherPlayers[data.id];
-        dbg("other exists: " + !!other);
         if (other) other.label.setText(data.name);
       });
 
-     this.socket.on("playerMoved", (data) => {
+      // Server now includes team in every playerMoved broadcast
+      this.socket.on("playerMoved", (data) => {
         if (data.id === this.socket.id) {
           if (this.myPlayer) {
             this.myPlayer.x = data.x;
@@ -99,6 +96,22 @@ function startGame(playerName) {
         }
       });
 
+      // update body/label colour when a player's team is confirmed
+      this.socket.on("playerTeamed", (data) => {
+        if (data.id === this.socket.id) {
+          if (this.myPlayer) this.myPlayer.setFillStyle(teamHex(data.team));
+          this.myTeam = data.team;
+        } else {
+          const other = this.otherPlayers[data.id];
+          if (other) {
+            other.body.setFillStyle(teamHex(data.team));
+            other.label.setColor(teamCss(data.team));
+            other.team = data.team;
+          }
+        }
+        this.updatePlayerList();
+      });
+
       this.socket.on("playerRotated", (data) => {
         const other = this.otherPlayers[data.id];
         if (other) other.body.setRotation(data.angle);
@@ -113,6 +126,7 @@ function startGame(playerName) {
         }
       });
 
+      // chat
       this.chatInput = document.createElement("input");
       this.chatInput.type = "text";
       this.chatInput.maxLength = 64;
@@ -164,26 +178,35 @@ function startGame(playerName) {
 
       this.socket.on("chatMessage", (data) => {
         this.showChatBubble(data.id, data.message);
-        this.addChatLog(data.name, data.message);
+        this.addChatLog(data.name, data.team, data.message);
       });
 
+      // npcs
       this.enemies = {};
 
-      this.socket.on("enemySpawned", (z) => {
-        const body = this.add.rectangle(z.x, z.y, 28, 28, 0x2d5a1b);
-        const label = this.add.text(z.x, z.y - 22, "Z", {
-          fontSize: "11px", color: "#ff4444",
+      this.socket.on("enemySpawned", (e) => {
+        const color = teamHex(e.team);
+        const body  = this.add.rectangle(e.x, e.y, 28, 28, color);
+        // Dim the enemy slightly so it reads as NPC not player
+        body.setAlpha(0.75);
+        const label = this.add.text(e.x, e.y - 22, "NPC", {
+          fontSize: "10px", color: teamCss(e.team),
           stroke: "#000", strokeThickness: 2
         }).setOrigin(0.5);
-        this.enemies[z.id] = { body, label };
+        this.enemies[e.id] = { body, label, team: e.team };
       });
 
-      this.socket.on("enemiesMoved", (enemyList) => {
-        enemyList.forEach((z) => {
-          const zObj = this.enemies[z.id];
-          if (zObj) {
-            zObj.body.setPosition(z.x, z.y);
-            zObj.label.setPosition(z.x, z.y - 22);
+      this.socket.on("enemiesMoved", (list) => {
+        list.forEach((e) => {
+          const obj = this.enemies[e.id];
+          if (!obj) return;
+          obj.body.setPosition(e.x, e.y);
+          obj.label.setPosition(e.x, e.y - 22);
+          // Update color if team changed (future-proofing)
+          if (e.team && e.team !== obj.team) {
+            obj.body.setFillStyle(teamHex(e.team));
+            obj.label.setColor(teamCss(e.team));
+            obj.team = e.team;
           }
         });
       });
@@ -196,12 +219,13 @@ function startGame(playerName) {
         }
       });
 
+      // leaderboard
       this.playerListDiv = document.createElement("div");
       this.playerListDiv.style.cssText = `
         position: fixed; top: 10px; right: 10px;
         background: rgba(0,0,0,0.5);
         border-radius: 8px; padding: 8px 14px;
-        min-width: 160px; max-height: 300px;
+        min-width: 180px; max-height: 300px;
         overflow-y: auto; z-index: 999;
         pointer-events: none;
         font-family: Arial, sans-serif;
@@ -209,13 +233,13 @@ function startGame(playerName) {
       document.body.appendChild(this.playerListDiv);
       this.updatePlayerList();
 
+      // inventory ui
       this.selectedSlot = -1;
       this.inventoryDiv = document.createElement("div");
       this.inventoryDiv.style.cssText = `
         position: fixed; bottom: 16px; left: 50%;
         transform: translateX(-50%);
-        display: flex; gap: 6px;
-        z-index: 999;
+        display: flex; gap: 6px; z-index: 999;
       `;
       document.body.appendChild(this.inventoryDiv);
 
@@ -228,136 +252,126 @@ function startGame(playerName) {
           border: 3px solid rgba(255,255,255,0.15);
           border-radius: 6px;
           display: flex; align-items: center; justify-content: center;
-          box-sizing: border-box;
-          cursor: pointer;
-          pointer-events: all;
+          box-sizing: border-box; cursor: pointer; pointer-events: all;
           transition: border-color 0.1s;
         `;
         slot.addEventListener("click", () => {
-          if (this.selectedSlot === i) {
-            this.selectSlot(-1); // unequip
-          } else {
-            this.selectSlot(i);
-          }
+          this.selectSlot(this.selectedSlot === i ? -1 : i);
         });
         this.inventoryDiv.appendChild(slot);
         this.inventorySlots.push(slot);
       }
-      
+
       document.addEventListener("keydown", (e) => {
-        const slots = ["1","2","3","4","5"];
-        const idx = slots.indexOf(e.key);
+        const idx = ["1","2","3","4","5"].indexOf(e.key);
         if (idx !== -1 && !this.chatOpen) {
-          if (this.selectedSlot === idx) {
-            this.selectSlot(-1);
-          } else {
-            this.selectSlot(idx);
-          }
+          this.selectSlot(this.selectedSlot === idx ? -1 : idx);
         }
       });
     }
 
-     spawnMe(p) {
-      dbg("spawnMe called at " + p.x + "," + p.y);
-      this.myPlayer = this.add.rectangle(p.x, p.y, 32, 32, 0x4fc3f7);
-      this.myLabel = this.add.text(p.x, p.y - 28, playerName, {
-        fontSize: "13px", color: "#ffffff",
+    // spawning
+
+    spawnMe(p) {
+      dbg("spawnMe at " + p.x + "," + p.y + " team=" + playerTeam);
+      this.myPlayer = this.add.rectangle(p.x, p.y, 32, 32, teamHex(playerTeam));
+      this.myLabel  = this.add.text(p.x, p.y - 28, playerName, {
+        fontSize: "13px", color: teamCss(playerTeam),
         stroke: "#000000", strokeThickness: 3
       }).setOrigin(0.5);
       this.cameras.main.startFollow(this.myPlayer, true, 0.1, 0.1);
     }
 
     spawnOther(p) {
-      const body = this.add.rectangle(p.x, p.y, 32, 32, 0xef5350);
+      const color = teamHex(p.team);
+      const css   = teamCss(p.team);
+      const body  = this.add.rectangle(p.x, p.y, 32, 32, color);
       if (p.angle) body.setRotation(p.angle);
       const label = this.add.text(p.x, p.y - 28, p.name || "Player", {
-        fontSize: "13px", color: "#ffffff",
+        fontSize: "13px", color: css,
         stroke: "#000000", strokeThickness: 3
       }).setOrigin(0.5);
-      this.otherPlayers[p.id] = { body, label };
+      this.otherPlayers[p.id] = { body, label, team: p.team || null };
     }
 
-   showChatBubble(id, message) {
-      const isMe = this.socket && id === this.socket.id;
-      const target = isMe ? this.myPlayer : (this.otherPlayers[id] ? this.otherPlayers[id].body : null);
+    // chat (again)
+
+    showChatBubble(id, message) {
+      const isMe   = this.socket && id === this.socket.id;
+      const target = isMe ? this.myPlayer : (this.otherPlayers[id]?.body ?? null);
       if (!target) return;
 
       if (!target.chatBubbles) target.chatBubbles = [];
 
       const bubble = this.add.text(target.x, target.y - 50, message, {
-        fontSize: "13px",
-        color: "#ffffff",
+        fontSize: "13px", color: "#ffffff",
         backgroundColor: "#00000099",
         padding: { x: 8, y: 5 },
-        borderRadius: 8,
         shadow: { offsetX: 1, offsetY: 1, color: "#000", blur: 4, fill: true }
       }).setOrigin(0.5).setDepth(10);
 
       target.chatBubbles.push(bubble);
-
       this.time.delayedCall(3500, () => {
         bubble.destroy();
-        if (target.chatBubbles) {
-          target.chatBubbles = target.chatBubbles.filter(b => b !== bubble);
-        }
+        if (target.chatBubbles) target.chatBubbles = target.chatBubbles.filter(b => b !== bubble);
       });
     }
 
-    addChatLog(name, message) {
+    addChatLog(name, team, message) {
       const line = document.createElement("div");
       line.style.cssText = `
-        background: rgba(0,0,0,0.6);
-        color: white; font-size: 13px;
-        font-family: Arial, sans-serif;
-        padding: 3px 8px; border-radius: 4px;
+        background: rgba(0,0,0,0.6); color: white; font-size: 13px;
+        font-family: Arial, sans-serif; padding: 3px 8px; border-radius: 4px;
       `;
-      line.innerHTML = `<span style="color:#4fc3f7">${name}</span>: ${message}`;
+      const nameColor = teamCss(team);
+      line.innerHTML = `<span style="color:${nameColor}">${name}</span>: ${message}`;
       this.chatLog.appendChild(line);
-
       setTimeout(() => line.remove(), 8000);
-
-      while (this.chatLog.children.length > 6) {
-        this.chatLog.removeChild(this.chatLog.firstChild);
-      }
+      while (this.chatLog.children.length > 6) this.chatLog.removeChild(this.chatLog.firstChild);
     }
+
+    // player list
 
     updatePlayerList() {
       if (!this.playerListDiv) return;
       this.playerListDiv.innerHTML = "";
 
+      // header
+      const header = document.createElement("div");
+      header.style.cssText = "color:#888; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; padding-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:4px;";
+      header.textContent = "Players";
+      this.playerListDiv.appendChild(header);
+
+      // u
+      const myColor = teamCss(this.myTeam);
       const myEntry = document.createElement("div");
-      myEntry.style.cssText = `
-        color: #4fc3f7; font-size: 13px;
-        padding: 2px 0; font-weight: bold;
-      `;
+      myEntry.style.cssText = `color:${myColor}; font-size:13px; padding:2px 0; font-weight:bold;`;
       myEntry.textContent = "▶ " + (this.myName || "You");
       this.playerListDiv.appendChild(myEntry);
 
+      // folk
       Object.values(this.otherPlayers).forEach((p) => {
+        const color = teamCss(p.team);
         const entry = document.createElement("div");
-        entry.style.cssText = `
-          color: #ffffff; font-size: 13px; padding: 2px 0;
-        `;
+        entry.style.cssText = `color:${color}; font-size:13px; padding:2px 0;`;
         entry.textContent = p.label.text || "Player";
         this.playerListDiv.appendChild(entry);
       });
     }
 
-   selectSlot(index) {
-      if (!this.inventorySlots) return;
+    // inventory
 
+    selectSlot(index) {
+      if (!this.inventorySlots) return;
       if (this.selectedSlot >= 0) {
         this.inventorySlots[this.selectedSlot].style.border = "3px solid rgba(255,255,255,0.15)";
       }
-     
-      if (index === -1 || index === this.selectedSlot) {
-        this.selectedSlot = -1;
-        return;
-      }
-
+      if (index === -1) { this.selectedSlot = -1; return; }
       this.selectedSlot = index;
-      this.inventorySlots[this.selectedSlot].style.border = "3px solid #4fc3f7";
+      this.inventorySlots[index].style.border = `3px solid ${teamCss(this.myTeam)}`;
     }
+
+    // update loop
 
     update() {
       if (!this.myPlayer) return;
@@ -371,27 +385,25 @@ function startGame(playerName) {
 
       if (!this.chatOpen) {
         this.socket.emit("inputs", inputs);
-
-        const pointer = this.input.activePointer;
+        const pointer    = this.input.activePointer;
         const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
         const angle = Phaser.Math.Angle.Between(
-          this.myPlayer.x, this.myPlayer.y,
-          worldPoint.x, worldPoint.y
+          this.myPlayer.x, this.myPlayer.y, worldPoint.x, worldPoint.y
         );
         this.myPlayer.setRotation(angle + Math.PI / 2);
         this.socket.emit("rotate", { angle: angle + Math.PI / 2 });
       }
 
+      // chat bubbles
       if (this.myPlayer.chatBubbles) {
-        this.myPlayer.chatBubbles.forEach((bubble, i) => {
-          bubble.setPosition(this.myPlayer.x, this.myPlayer.y - 55 - (i * 26));
+        this.myPlayer.chatBubbles.forEach((b, i) => {
+          b.setPosition(this.myPlayer.x, this.myPlayer.y - 55 - i * 26);
         });
       }
-
       Object.values(this.otherPlayers).forEach((p) => {
         if (p.body.chatBubbles) {
-          p.body.chatBubbles.forEach((bubble, i) => {
-            bubble.setPosition(p.body.x, p.body.y - 55 - (i * 26));
+          p.body.chatBubbles.forEach((b, i) => {
+            b.setPosition(p.body.x, p.body.y - 55 - i * 26);
           });
         }
       });
@@ -405,11 +417,11 @@ function startGame(playerName) {
   }
 
   new Phaser.Game({
-    type: Phaser.AUTO,
-    width: window.innerWidth,
-    height: window.innerHeight,
+    type:            Phaser.AUTO,
+    width:           window.innerWidth,
+    height:          window.innerHeight,
     backgroundColor: "#1a1a2e",
-    parent: "gameContainer",
-    scene: GameScene
+    parent:          "gameContainer",
+    scene:           GameScene
   });
 }
