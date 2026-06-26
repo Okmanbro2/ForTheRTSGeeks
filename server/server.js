@@ -2,6 +2,29 @@ const http = require("http");
 const { Server } = require("socket.io");
 const PORT = process.env.PORT || 3000;
 
+// ─────────────────────────────────────────────
+//  notes to self:
+//    enemy   : which team(s) this team is hostile to (array)
+//    color   : hex color used by clients for rendering
+// ─────────────────────────────────────────────
+const TEAMS = {
+  havatica: {
+    enemies: ["worstendom"],
+    color: "#c9a0f0"          // light purple
+  },
+  worstendom: {
+    enemies: ["havatica"],
+    color: "#777777"          // dark gray (visible on green map)
+  }
+};
+
+// are we Enemies yes or no
+function areHostile(teamA, teamB) {
+  if (!teamA || !teamB) return false;
+  const def = TEAMS[teamA];
+  return def ? def.enemies.includes(teamB) : false;
+}
+
 const httpServer = http.createServer((req, res) => {
   res.writeHead(200);
   res.end("Game server is running!");
@@ -12,74 +35,70 @@ const io = new Server(httpServer, {
 });
 
 const players = {};
-const SPEED = 3;
-const ENEMY_SPEED = 1.2;
-const ENEMY_SIZE = 28;       // collision diameter for enemy-enemy
-const ENEMY_PLAYER_SIZE = 30; // collision diameter for enemy-player (avg of 28 and 32)
-const MAX_ENEMIES = 6;
-const TICK_RATE = 1000 / 60; // 60 times per second
+const SPEED             = 3;
+const ENEMY_SPEED       = 1.2;
+const ENEMY_SIZE        = 28;   // enemy-enemy collision diameter
+const ENEMY_PLAYER_SIZE = 30;   // enemy-player collision diameter
+const MAX_ENEMIES       = 6;
+const TICK_RATE         = 1000 / 60;
 
 const enemies = {};
 let enemyIdCounter = 0;
 
-function getNearestPlayer(enemy) {
-  let nearest = null;
+function getNearestHostilePlayer(enemy) {
+  let nearest     = null;
   let nearestDist = Infinity;
 
   Object.values(players).forEach((p) => {
-    if (p.team === "enemy") return; // skip teammates when teams added
-    const dx = p.x - enemy.x;
-    const dy = p.y - enemy.y;
+    if (!areHostile(enemy.team, p.team)) return; // skip friendlies / neutral
+    const dx   = p.x - enemy.x;
+    const dy   = p.y - enemy.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < nearestDist) {
       nearestDist = dist;
-      nearest = p;
+      nearest     = p;
     }
   });
 
   return nearest;
 }
 
+const teamNames = Object.keys(TEAMS);
+
 function spawnEnemy() {
   if (Object.keys(enemies).length >= MAX_ENEMIES) return;
 
-  const id = "e_" + enemyIdCounter++;
+  const id   = "e_" + enemyIdCounter++;
   const side = Math.floor(Math.random() * 4);
   let x, y;
 
-  // spawn on a random edge
-  if (side === 0) { x = Math.random() * 2000; y = 16; }
+  if (side === 0)      { x = Math.random() * 2000; y = 16;   }
   else if (side === 1) { x = Math.random() * 2000; y = 1984; }
-  else if (side === 2) { x = 16; y = Math.random() * 2000; }
-  else { x = 1984; y = Math.random() * 2000; }
+  else if (side === 2) { x = 16;   y = Math.random() * 2000; }
+  else                 { x = 1984; y = Math.random() * 2000; }
 
-  enemies[id] = {
-    id, x, y,
-    targetId: null,
-    team: "enemy",
-    hp: 100,
-    maxHp: 100
-  };
+  // alt teams
+  const team = teamNames[enemyIdCounter % teamNames.length];
 
+  enemies[id] = { id, x, y, targetId: null, team, hp: 100, maxHp: 100 };
   io.emit("enemySpawned", enemies[id]);
 }
 
 setInterval(spawnEnemy, 4000);
 
-// retarget every second
+// retargeting
 setInterval(() => {
   Object.values(enemies).forEach((e) => {
-    const nearest = getNearestPlayer(e);
-    e.targetId = nearest ? nearest.id : null;
+    const nearest = getNearestHostilePlayer(e);
+    e.targetId    = nearest ? nearest.id : null;
   });
 }, 1000);
 
-// server loop
 setInterval(() => {
   const playerList = Object.values(players);
   const enemyList  = Object.values(enemies);
 
-  // move players
+  // mooooove
   playerList.forEach((p) => {
     if (p.inputs.up)    p.y = Math.max(16, p.y - SPEED);
     if (p.inputs.down)  p.y = Math.min(1984, p.y + SPEED);
@@ -87,12 +106,12 @@ setInterval(() => {
     if (p.inputs.right) p.x = Math.min(1984, p.x + SPEED);
   });
 
-  // player-player collision
+  // pvp collisions
   const PLAYER_MIN_DIST = 32;
   for (let i = 0; i < playerList.length; i++) {
     for (let j = i + 1; j < playerList.length; j++) {
-      const a = playerList[i];
-      const b = playerList[j];
+      const a  = playerList[i];
+      const b  = playerList[j];
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -100,10 +119,8 @@ setInterval(() => {
         const overlap = (PLAYER_MIN_DIST - dist) / 2;
         const nx = dx / dist;
         const ny = dy / dist;
-        a.x -= nx * overlap;
-        a.y -= ny * overlap;
-        b.x += nx * overlap;
-        b.y += ny * overlap;
+        a.x -= nx * overlap;  a.y -= ny * overlap;
+        b.x += nx * overlap;  b.y += ny * overlap;
         a.x = Math.max(16, Math.min(1984, a.x));
         a.y = Math.max(16, Math.min(1984, a.y));
         b.x = Math.max(16, Math.min(1984, b.x));
@@ -112,17 +129,17 @@ setInterval(() => {
     }
   }
 
-  // broadcast updated player positions
+  // broadcast player positions
   playerList.forEach((p) => {
-    io.emit("playerMoved", { id: p.id, x: p.x, y: p.y, name: p.name, angle: p.angle });
+    io.emit("playerMoved", { id: p.id, x: p.x, y: p.y, name: p.name, angle: p.angle, team: p.team });
   });
 
-  // move enemies toward their target
+  // move chuds
   enemyList.forEach((e) => {
     const target = e.targetId ? players[e.targetId] : null;
     if (!target) return;
-    const dx = target.x - e.x;
-    const dy = target.y - e.y;
+    const dx   = target.x - e.x;
+    const dy   = target.y - e.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist > 2) {
       e.x += (dx / dist) * ENEMY_SPEED;
@@ -132,11 +149,11 @@ setInterval(() => {
     }
   });
 
-  // enemy-enemy collision
+  // eve collision
   for (let i = 0; i < enemyList.length; i++) {
     for (let j = i + 1; j < enemyList.length; j++) {
-      const a = enemyList[i];
-      const b = enemyList[j];
+      const a  = enemyList[i];
+      const b  = enemyList[j];
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -144,10 +161,8 @@ setInterval(() => {
         const overlap = (ENEMY_SIZE - dist) / 2;
         const nx = dx / dist;
         const ny = dy / dist;
-        a.x -= nx * overlap;
-        a.y -= ny * overlap;
-        b.x += nx * overlap;
-        b.y += ny * overlap;
+        a.x -= nx * overlap;  a.y -= ny * overlap;
+        b.x += nx * overlap;  b.y += ny * overlap;
         a.x = Math.max(16, Math.min(1984, a.x));
         a.y = Math.max(16, Math.min(1984, a.y));
         b.x = Math.max(16, Math.min(1984, b.x));
@@ -156,17 +171,17 @@ setInterval(() => {
     }
   }
 
-  // enemy-player collision
+  // pve collision
   enemyList.forEach((e) => {
     playerList.forEach((p) => {
-      const dx = p.x - e.x;
-      const dy = p.y - e.y;
+      if (!areHostile(e.team, p.team)) return; // don't push friendlies
+      const dx   = p.x - e.x;
+      const dy   = p.y - e.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist < ENEMY_PLAYER_SIZE && dist > 0) {
         const overlap = ENEMY_PLAYER_SIZE - dist;
         const nx = dx / dist;
         const ny = dy / dist;
-        // only push the player; enemy keeps advancing
         p.x += nx * overlap;
         p.y += ny * overlap;
         p.x = Math.max(16, Math.min(1984, p.x));
@@ -175,13 +190,14 @@ setInterval(() => {
     });
   });
 
-  // broadcast enemy positions
+  // Broadcast enemy positions + team so clients render the right color
   if (enemyList.length > 0) {
     io.emit("enemiesMoved", enemyList.map(e => ({
-      id: e.id, x: e.x, y: e.y
+      id: e.id, x: e.x, y: e.y, team: e.team
     })));
   }
 }, TICK_RATE);
+
 
 io.on("connection", (socket) => {
   console.log("Player connected:", socket.id);
@@ -191,30 +207,32 @@ io.on("connection", (socket) => {
     y: 200 + Math.floor(Math.random() * 600),
     id: socket.id,
     name: "Player",
+    team: null, // set by "setTeam" event on join
     angle: 0,
     inputs: { up: false, down: false, left: false, right: false }
   };
 
   socket.emit("currentPlayers", players);
-
-  // send existing enemies to the newly connected player
-  Object.values(enemies).forEach((e) => {
-    socket.emit("enemySpawned", e);
-  });
-
+  Object.values(enemies).forEach((e) => socket.emit("enemySpawned", e));
   socket.broadcast.emit("newPlayer", players[socket.id]);
 
   socket.on("setName", (name) => {
     if (players[socket.id]) {
       players[socket.id].name = name;
-      socket.broadcast.emit("playerNamed", { id: socket.id, name: name });
+      socket.broadcast.emit("playerNamed", { id: socket.id, name });
+    }
+  });
+
+  socket.on("setTeam", (team) => {
+    if (players[socket.id] && TEAMS[team]) {
+      players[socket.id].team = team;
+      // tell everyone (including sender) so leaderboard updates
+      io.emit("playerTeamed", { id: socket.id, team });
     }
   });
 
   socket.on("inputs", (data) => {
-    if (players[socket.id]) {
-      players[socket.id].inputs = data;
-    }
+    if (players[socket.id]) players[socket.id].inputs = data;
   });
 
   socket.on("rotate", (data) => {
@@ -225,7 +243,12 @@ io.on("connection", (socket) => {
   });
 
   socket.on("chat", (data) => {
-    io.emit("chatMessage", { id: socket.id, name: players[socket.id]?.name || "Player", message: data.message });
+    io.emit("chatMessage", {
+      id: socket.id,
+      name: players[socket.id]?.name || "Player",
+      team: players[socket.id]?.team || null,
+      message: data.message
+    });
   });
 
   socket.on("disconnect", () => {
