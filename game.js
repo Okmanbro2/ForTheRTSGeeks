@@ -86,6 +86,11 @@ function startGame(playerName) {
         }
       });
 
+      this.socket.on("playerRotated", (data) => {
+        const other = this.otherPlayers[data.id];
+        if (other) other.body.setRotation(data.angle);
+      });
+
       this.socket.on("playerLeft", (id) => {
         if (this.otherPlayers[id]) {
           this.otherPlayers[id].label.destroy();
@@ -161,6 +166,7 @@ function startGame(playerName) {
 
     spawnOther(p) {
       const body = this.add.rectangle(p.x, p.y, 32, 32, 0xef5350);
+      if (p.angle) body.setRotation(p.angle);
       const label = this.add.text(p.x, p.y - 28, p.name || "Player", {
         fontSize: "13px", color: "#ffffff",
         stroke: "#000000", strokeThickness: 3
