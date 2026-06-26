@@ -39,7 +39,7 @@ const SPEED             = 3;
 const ENEMY_SPEED       = 1.2;
 const ENEMY_SIZE        = 28;   // enemy-enemy collision diameter
 const ENEMY_PLAYER_SIZE = 30;   // enemy-player collision diameter
-const MAX_ENEMIES       = 6;
+const MAX_NPCS       = 4;
 const TICK_RATE         = 1000 / 60;
 
 const enemies = {};
@@ -66,7 +66,7 @@ function getNearestHostilePlayer(enemy) {
 const teamNames = Object.keys(TEAMS);
 
 function spawnEnemy() {
-  if (Object.keys(enemies).length >= MAX_ENEMIES) return;
+  if (Object.keys(enemies).length >= MAX_NPCS) return;
 
   const id   = "e_" + enemyIdCounter++;
   const side = Math.floor(Math.random() * 4);
