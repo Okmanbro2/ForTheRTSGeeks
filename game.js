@@ -112,10 +112,10 @@ function startGame(playerName) {
       this.chatLog = document.createElement("div");
       this.chatLog.style.cssText = `
         position: fixed; bottom: 70px; left: 20px;
-        width: 320px; max-height: 150px;
-        overflow: hidden; pointer-events: none;
+        width: 320px; pointer-events: none;
         z-index: 999; display: flex;
         flex-direction: column; gap: 2px;
+        justify-content: flex-end;
       `;
       document.body.appendChild(this.chatLog);
 
@@ -215,6 +215,17 @@ function startGame(playerName) {
     update() {
       if (!this.myPlayer) return;
       if (this.chatOpen) return;
+      
+      if (this.myPlayer) {
+        const pointer = this.input.activePointer;
+        const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+        const angle = Phaser.Math.Angle.Between(
+          this.myPlayer.x, this.myPlayer.y,
+          worldPoint.x, worldPoint.y
+        );
+        this.myPlayer.setRotation(angle + Math.PI / 2);
+        this.socket.emit("rotate", { angle: angle + Math.PI / 2 });
+      }
 
       const speed = 3;
       let dx = 0, dy = 0;
