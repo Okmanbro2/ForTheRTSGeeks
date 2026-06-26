@@ -196,7 +196,7 @@ function startGame(playerName) {
         slot.style.cssText = `
           width: 56px; height: 56px;
           background: rgba(40,40,40,0.7);
-          border: 3px solid ${i === 0 ? "#4fc3f7" : "rgba(255,255,255,0.15)"};
+          border: 3px solid rgba(255,255,255,0.15);
           border-radius: 6px;
           display: flex; align-items: center; justify-content: center;
           box-sizing: border-box;
