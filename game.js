@@ -41,6 +41,7 @@ function startGame(playerName) {
       grid.strokePath();
 
       this.cameras.main.setBounds(0, 0, 2000, 2000);
+      this.cameras.main.setBackgroundColor(0x3a7d44);
 
       this.cursors = this.input.keyboard.createCursorKeys();
       this.wasd = this.input.keyboard.addKeys({
@@ -56,6 +57,7 @@ function startGame(playerName) {
       dbg("Socket created");
 
       this.socket.on("connect", () => {
+        this.myName = playerName;
         this.socket.emit("setName", playerName);
         dbg("Connected! ID: " + this.socket.id);
       });
@@ -68,7 +70,10 @@ function startGame(playerName) {
         });
       });
 
-      this.socket.on("newPlayer", (p) => this.spawnOther(p));
+      this.socket.on("newPlayer", (p) => {
+        this.spawnOther(p);
+        this.updatePlayerList();
+      });
 
       this.socket.on("playerNamed", (data) => {
         dbg("playerNamed: " + data.id + " = " + data.name);
@@ -104,6 +109,7 @@ function startGame(playerName) {
           this.otherPlayers[id].label.destroy();
           this.otherPlayers[id].body.destroy();
           delete this.otherPlayers[id];
+          this.updatePlayerList();
         }
       });
 
@@ -160,6 +166,53 @@ function startGame(playerName) {
         this.showChatBubble(data.id, data.message);
         this.addChatLog(data.name, data.message);
       });
+
+      this.playerListDiv = document.createElement("div");
+      this.playerListDiv.style.cssText = `
+        position: fixed; top: 10px; right: 10px;
+        background: rgba(0,0,0,0.5);
+        border-radius: 8px; padding: 8px 14px;
+        min-width: 160px; max-height: 300px;
+        overflow-y: auto; z-index: 999;
+        pointer-events: none;
+        font-family: Arial, sans-serif;
+      `;
+      document.body.appendChild(this.playerListDiv);
+      this.updatePlayerList();
+
+      this.selectedSlot = 0;
+      this.inventoryDiv = document.createElement("div");
+      this.inventoryDiv.style.cssText = `
+        position: fixed; bottom: 16px; left: 50%;
+        transform: translateX(-50%);
+        display: flex; gap: 6px;
+        z-index: 999;
+      `;
+      document.body.appendChild(this.inventoryDiv);
+
+      this.inventorySlots = [];
+      for (let i = 0; i < 5; i++) {
+        const slot = document.createElement("div");
+        slot.style.cssText = `
+          width: 56px; height: 56px;
+          background: rgba(40,40,40,0.7);
+          border: 2px solid ${i === 0 ? "#4fc3f7" : "rgba(255,255,255,0.15)"};
+          border-radius: 6px;
+          display: flex; align-items: center; justify-content: center;
+          color: rgba(255,255,255,0.3);
+          font-size: 11px; font-family: Arial, sans-serif;
+          box-sizing: border-box;
+        `;
+        slot.textContent = i + 1;
+        this.inventoryDiv.appendChild(slot);
+        this.inventorySlots.push(slot);
+      }
+
+      for (let i = 1; i <= 5; i++) {
+        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes["ONE".replace("ONE", ["ONE","TWO","THREE","FOUR","FIVE"][i-1])]).on("down", () => {
+          this.selectSlot(i - 1);
+        });
+      }
     }
 
      spawnMe(p) {
@@ -226,6 +279,35 @@ function startGame(playerName) {
       }
     }
 
+    updatePlayerList() {
+      if (!this.playerListDiv) return;
+      this.playerListDiv.innerHTML = "";
+
+      const myEntry = document.createElement("div");
+      myEntry.style.cssText = `
+        color: #4fc3f7; font-size: 13px;
+        padding: 2px 0; font-weight: bold;
+      `;
+      myEntry.textContent = "▶ " + (this.myName || "You");
+      this.playerListDiv.appendChild(myEntry);
+
+      Object.values(this.otherPlayers).forEach((p) => {
+        const entry = document.createElement("div");
+        entry.style.cssText = `
+          color: #ffffff; font-size: 13px; padding: 2px 0;
+        `;
+        entry.textContent = p.label.text || "Player";
+        this.playerListDiv.appendChild(entry);
+      });
+    }
+
+    selectSlot(index) {
+      if (!this.inventorySlots) return;
+      this.inventorySlots[this.selectedSlot].style.border = "2px solid rgba(255,255,255,0.15)";
+      this.selectedSlot = index;
+      this.inventorySlots[this.selectedSlot].style.border = "2px solid #4fc3f7";
+    }
+
     update() {
       if (!this.myPlayer) return;
 
@@ -262,6 +344,12 @@ function startGame(playerName) {
           });
         }
       });
+
+      if (!this.lastListUpdate) this.lastListUpdate = 0;
+      if (this.time.now - this.lastListUpdate > 2000) {
+        this.updatePlayerList();
+        this.lastListUpdate = this.time.now;
+      }
     }
   }
 
