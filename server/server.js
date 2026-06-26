@@ -42,7 +42,7 @@ const ENEMY_PLAYER_SIZE = 30;   // enemy-player collision diameter
 const MAX_NPCS       = 4;
 const TICK_RATE         = 1000 / 60;
 
-let gameClock = 600; // 10 mins
+let gameClock = 1500; // 25 mins
 
 const enemies = {};
 let enemyIdCounter = 0;
